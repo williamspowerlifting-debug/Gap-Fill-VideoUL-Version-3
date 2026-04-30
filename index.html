@@ -14,6 +14,50 @@
   window.ASSEMBLYAI_CONFIG = {
     API_KEY: "bfdb9b59994d4714b6e94d8814921fe0"
   };
+  async function generateFullLessonAI(){
+  const topic = prompt("Enter a topic (e.g. travel, business, daily life):");
+  if(!topic) return;
+
+  const level = prompt("Enter level (A1, A2, B1, B2, etc):","B1");
+
+  try{
+    const res = await fetch("https://gapfill-ai.williamspowerlifting.workers.dev/",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        mode: "full_lesson",
+        topic: topic,
+        level: level
+      })
+    });
+
+    const data = await res.json();
+
+    if(!data || !data.sections){
+      alert("AI failed to generate lesson.");
+      return;
+    }
+
+    // CLEAR existing sections
+    document.getElementById("sections").innerHTML = "";
+
+    // ADD AI sections
+    data.sections.forEach(sec=>{
+      addSection({
+        text: sec.text,
+        answers: sec.answers,
+        start: 0,
+        end: 10
+      });
+    });
+
+    alert("✅ Full lesson generated!");
+
+  }catch(err){
+    console.error(err);
+    alert("Error generating lesson");
+  }
+}
 </script>
 
 <style>
@@ -392,6 +436,7 @@ function loadBuilder(saved){
     '<button onclick="addSection()">+ Add Section</button>'+
     '<button onclick="preview()">Preview</button>'+
     '<button onclick="generate()">Generate Link</button>'+
+    '<<button onclick="generateFullLessonAI()">🤖 Generate Full Lesson</button>
     '<button onclick="saveExercise()">💾 Save Exercise</button>'+
     '<input type="file" id="loadExerciseFile" style="display:none" onchange="loadExerciseFile(event)">'+
     '<button onclick="document.getElementById(\'loadExerciseFile\').click()">📂 Load Exercise</button>'+
