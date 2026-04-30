@@ -31,31 +31,37 @@
       })
     });
 
-    const data = await res.json();
-
-    if(!data || !data.sections){
-      alert("AI failed to generate lesson.");
-      return;
+    if(!res.ok){
+      throw new Error("Server error: " + res.status);
     }
 
-    // CLEAR existing sections
+    let data;
+    try{
+      data = await res.json();
+    }catch(e){
+      throw new Error("Invalid JSON from Worker");
+    }
+
+    if(!data || !data.sections || !Array.isArray(data.sections)){
+      throw new Error("Bad response format");
+    }
+
     document.getElementById("sections").innerHTML = "";
 
-    // ADD AI sections
     data.sections.forEach(sec=>{
       addSection({
-        text: sec.text,
-        answers: sec.answers,
+        text: sec.text || "",
+        answers: sec.answers || [],
         start: 0,
         end: 10
       });
     });
 
-    alert("✅ Full lesson generated!");
+    alert("Full lesson generated!");
 
   }catch(err){
     console.error(err);
-    alert("Error generating lesson");
+    alert("Error: " + err.message);
   }
 }
 </script>
