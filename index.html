@@ -6,487 +6,1059 @@
 <title>Listening Exercise Builder</title>
 
 <script>
-  window.BUNNY_CONFIG = {
-    LIBRARY_ID: "650012",
-    API_KEY:    "15f2441d-6e94-4116-a6d530cf3d1b-5d71-407f",
-    CDN_HOST:   "vz-e53544bb-501.b-cdn.net"
-  };
-  window.ASSEMBLYAI_CONFIG = {
-    API_KEY: "bfdb9b59994d4714b6e94d8814921fe0"
-  };
-  async function generateFullExerciseAI(){
-  const topic = prompt("Enter a topic (e.g. travel, business, daily life):");
-  if(!topic) return;
-
-  const level = prompt("Enter level (A1, A2, B1, B2, etc):","B1");
-
-  try{
-    const res = await fetch("https://gapfill-ai.williamspowerlifting.workers.dev/",{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        mode: "full_Exercise",
-        topic: topic,
-        level: level
-      })
-    });
-
-    if(!res.ok){
-      throw new Error("Server error: " + res.status);
-    }
-
-    let data;
-    try{
-      data = await res.json();
-    }catch(e){
-      throw new Error("Invalid JSON from Worker");
-    }
-
-    if(!data || !data.sections || !Array.isArray(data.sections)){
-      throw new Error("Bad response format");
-    }
-
-    document.getElementById("sections").innerHTML = "";
-
-    data.sections.forEach(sec=>{
-      addSection({
-        text: sec.text || "",
-        answers: sec.answers || [],
-        start: 0,
-        end: 10
-      });
-    });
-
-    alert("Full Exercise generated!");
-
-  }catch(err){
-    console.error(err);
-    alert("Error: " + err.message);
-  }
-}
-  async function handleUrl() {
-  const url = document.getElementById("audioUrl").value;
-
-  if (!url) {
-    alert("Please paste a link");
-    return;
-  }
-
-  status.innerText = "Processing video link...";
-
-  try {
-    const res = await fetch(
-      "https://gapfill-ai.williamspowerlifting.workers.dev/transcribe",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          audioUrl: url
-        })
-      }
-    );
-
-    const data = await res.json();
-
-    if (!data.text) throw new Error("No transcript");
-
-    document.getElementById("transcript").value = data.text;
-
-    status.innerText = "Transcript ready ✓";
-
-  } catch (err) {
-    console.error(err);
-    status.innerText = "Failed to process link";
-  }
-}
+  // ============================================================
+  // 🔐 Worker URL — all API keys are hidden in Cloudflare Secrets
+  // ============================================================
+  window.WORKER_URL = "https://gapfill-ai.williamspowerlifting.workers.dev";
 </script>
 
 <style>
-body{font-family:system-ui;background:#f8fafc;margin:0;}
-.container{max-width:900px;margin:40px auto;background:white;padding:24px;border-radius:16px;}
-.section-builder{background:#f1f5f9;padding:12px;margin:12px 0;border-radius:10px;}
-.section-active{outline:2px solid #4f46e5;background:#eef2ff;padding:6px;border-radius:6px;}
-.field-instruction{font-size:13px;color:#555;margin-top:10px;}
-textarea,input{width:100%;padding:6px;margin-top:4px;}
-button{padding:8px 12px;margin:4px;border:none;border-radius:6px;background:#4f46e5;color:white;cursor:pointer;}
-button:disabled{background:#d1d5db !important;cursor:not-allowed;color:#6b7280;}
-video, iframe, #player, #builderPlayer{width:100%;height:400px;max-width:100%;display:block;}
+body{
+  font-family:Inter,system-ui,sans-serif;
+  background:#f5f6f8;margin:0;padding:40px 20px;color:#111;
+}
+.container{max-width:760px;margin:auto;}
+h1{font-size:30px;margin-bottom:6px;}
+h2{font-size:20px;margin-top:30px;color:#1f2937;}
+.sub{color:#666;margin-bottom:24px;}
+
+.card{
+  background:white;border-radius:18px;padding:22px;
+  margin-bottom:18px;box-shadow:0 10px 25px rgba(0,0,0,0.05);
+}
+
+.dropzone{
+  border:2px dashed #d0d5dd;border-radius:14px;padding:40px;
+  text-align:center;cursor:pointer;transition:all 0.2s;
+}
+.dropzone:hover, .dropzone.dragover{
+  border-color:#4f46e5;background:#fafafa;
+}
+.dropzone strong{display:block;margin-bottom:6px;font-size:16px;}
+.dropzone .hint{color:#888;font-size:13px;margin-top:4px;}
+
+input[type="file"]{display:none;}
+input[type="text"], textarea, input[type="number"]{
+  width:100%;margin-top:8px;padding:12px;border-radius:10px;
+  border:1px solid #e5e7eb;font-size:14px;box-sizing:border-box;
+}
+textarea{height:160px;resize:vertical;font-family:inherit;}
+
+label{font-weight:600;font-size:14px;color:#374151;}
+
+button{
+  padding:12px 18px;border-radius:12px;border:none;
+  background:#111;color:white;font-size:15px;cursor:pointer;
+  margin:4px 0;transition:opacity 0.2s;
+}
+button:hover{opacity:0.9;}
+button:disabled{background:#999;cursor:not-allowed;}
+button.secondary{background:#e5e7eb;color:#1f2937;}
+button.primary-blue{background:#4f46e5;}
+button.success{background:#10b981;}
+button.danger{background:#ef4444;}
+button.full{width:100%;padding:15px;}
+
+.status{margin-top:10px;font-size:14px;color:#555;}
+.status.success{color:#065f46;}
+.status.error{color:#991b1b;}
+
+.progress-wrap{
+  background:#e5e7eb;border-radius:8px;overflow:hidden;
+  margin-top:10px;height:22px;display:none;
+}
+.progress-bar{
+  background:linear-gradient(90deg,#4f46e5,#10b981);height:100%;
+  width:0%;transition:width 0.2s;color:white;text-align:center;
+  font-size:12px;line-height:22px;
+}
+
+video, iframe.video-player{
+  width:100%;max-width:100%;height:380px;display:block;
+  border-radius:12px;border:none;background:#000;
+}
+
+/* Sections (gap-fill builder) */
+.section-builder{
+  background:#f9fafb;padding:14px;margin:12px 0;border-radius:12px;
+  border:1px solid #e5e7eb;
+}
+.section-builder .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.section-builder .row input{flex:1;min-width:80px;}
+.gap-warning{font-size:12px;margin-top:6px;color:#b45309;}
+
+/* Transcript display */
+.transcript-output{
+  max-height:300px;overflow-y:auto;background:#fff;padding:12px;
+  border-radius:10px;border:1px solid #e5e7eb;font-size:14px;line-height:1.7;
+}
+.transcript-line{margin-bottom:6px;padding:4px 0;}
+.transcript-time{
+  display:inline-block;background:#4f46e5;color:white;
+  padding:2px 6px;border-radius:4px;font-size:11px;
+  margin-right:6px;cursor:pointer;font-family:monospace;
+}
+.transcript-time:hover{background:#10b981;}
+.transcript-line .mini-btn{
+  padding:2px 8px;font-size:11px;margin-left:4px;border-radius:4px;
+}
+
+/* Student view */
 #text{font-size:18px;line-height:2;margin-top:20px;}
 .gap-wrap{display:inline-block;vertical-align:middle;margin:0 6px;}
-.gap-input{width:140px;height:28px;border:none;border-bottom:2px solid #4f46e5;font-size:16px;text-align:center;outline:none;background:white;}
+.gap-input{
+  width:140px;height:28px;border:none;
+  border-bottom:2px solid #4f46e5;
+  font-size:16px;text-align:center;outline:none;background:white;
+}
 .gap-input:focus{border-bottom:2px solid #10b981;}
 .correct{border-bottom:2px solid green;}
 .incorrect{border-bottom:2px solid red;}
-.gap-warning{font-size:12px;margin-top:6px;color:#b45309;}
-.gap-preview{margin-top:6px;font-size:13px;background:#fff;padding:6px;border-radius:6px;border:1px solid #e5e7eb;display:none;}
-.gap-highlight{background:#fde68a;padding:0 2px;border-radius:3px;}
-.source-toggle{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
-.source-toggle button{flex:1;min-width:140px;background:#e5e7eb;color:#374151;}
-.source-toggle button.active{background:#4f46e5;color:white;}
-.transcript-panel{margin-top:14px;padding:12px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;}
-.transcript-panel h3{margin:0 0 8px 0;font-size:15px;}
-.transcript-output{max-height:300px;overflow-y:auto;background:white;padding:10px;border-radius:8px;border:1px solid #e5e7eb;font-size:14px;line-height:1.7;}
-.transcript-line{margin-bottom:4px;}
-.transcript-time{display:inline-block;background:#4f46e5;color:white;padding:2px 6px;border-radius:4px;font-size:11px;margin-right:6px;cursor:pointer;font-family:monospace;}
-.transcript-time:hover{background:#10b981;}
-.transcript-word{cursor:pointer;padding:0 1px;border-radius:2px;}
-.transcript-word:hover{background:#fde68a;}
-.recording-dot{display:inline-block;width:10px;height:10px;background:red;border-radius:50%;margin-right:6px;animation:pulse 1s infinite;}
-@keyframes pulse{50%{opacity:0.3;}}
-.transcript-controls{margin-bottom:8px;}
-.transcript-status{font-size:12px;color:#6b7280;margin-top:6px;}
-.upload-info{background:#dbeafe;padding:8px 12px;border-radius:6px;font-size:13px;color:#1e40af;margin-top:6px;}
-.progress-wrap{background:#e5e7eb;border-radius:8px;overflow:hidden;margin-top:8px;height:22px;display:none;}
-.progress-bar{background:linear-gradient(90deg,#4f46e5,#10b981);height:100%;width:0%;transition:width 0.2s;color:white;text-align:center;font-size:12px;line-height:22px;}
-.upload-status{font-size:13px;margin-top:6px;}
-.upload-success{color:#065f46;}
-.upload-error{color:#991b1b;}
-.config-warning{background:#fee2e2;border:1px solid #fecaca;padding:10px;border-radius:8px;color:#991b1b;font-size:13px;margin-bottom:12px;}
-.engine-select{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;}
-.engine-select button{font-size:12px;padding:4px 10px;background:#e5e7eb;color:#374151;}
-.engine-select button.active{background:#4f46e5;color:white;}
-  /* ============ MOBILE RESPONSIVE ============ */
-@media (max-width: 768px){
-  .container{
-    margin:0;
-    padding:14px;
-    border-radius:0;
-    max-width:100%;
-  }
-  body{font-size:15px;}
-  h2{font-size:20px;}
-  video, iframe, #player, #builderPlayer{
-    height:240px;
-  }
-  button{
-    padding:10px 14px;
-    font-size:14px;
-    margin:3px;
-    min-height:44px;
-  }
-  .source-toggle{flex-direction:column;}
-  .source-toggle button{min-width:100%;width:100%;}
-  .engine-select{flex-direction:column;align-items:stretch;}
-  .engine-select button{width:100%;text-align:left;}
-  textarea, input{
-    font-size:16px;
-    padding:10px;
-  }
-  .gap-input{
-    width:100px;
-    height:32px;
-    font-size:15px;
-  }
-  #text{
-    font-size:16px;
-    line-height:2.2;
-  }
-  .transcript-output{
-    max-height:200px;
-    font-size:13px;
-  }
-  .transcript-line{
-    padding:6px 0;
-    border-bottom:1px solid #f3f4f6;
-  }
-  .transcript-line button{
-    display:inline-block;
-    margin:2px;
-    min-height:30px;
-  }
-  .section-builder{padding:14px;}
-  .field-instruction{font-size:14px;}
-  .upload-info, .config-warning{font-size:13px;}
-}
+.section-active{outline:2px solid #4f46e5;background:#eef2ff;padding:6px;border-radius:6px;}
 
-@media (max-width: 480px){
-  .container{padding:10px;}
-  video, iframe, #player, #builderPlayer{
-    height:200px;
-  }
-  h2{font-size:18px;}
-  .gap-input{width:80px;font-size:14px;}
-}
-
-/* Touch-friendly improvements for all sizes */
-@media (hover: none){
-  button:active{opacity:0.7;}
-  .transcript-time:active{background:#10b981;}
-}
-/* ============ END MOBILE ============ */
-  /* ============ HELP MODAL ============ */
-.help-overlay{
-  display:none;
-  position:fixed;top:0;left:0;width:100%;height:100%;
-  background:rgba(0,0,0,0.5);z-index:9999;
-  justify-content:center;align-items:center;
-  padding:20px;box-sizing:border-box;
-}
-.help-overlay.show{display:flex;}
-.help-modal{
-  background:white;border-radius:12px;
-  max-width:700px;width:100%;max-height:90vh;
-  overflow-y:auto;padding:24px;position:relative;
-}
-.help-modal h2{margin-top:0;color:#4f46e5;}
-.help-modal h3{color:#1f2937;border-bottom:2px solid #e5e7eb;padding-bottom:6px;margin-top:20px;}
-.help-modal ol, .help-modal ul{padding-left:22px;line-height:1.7;}
-.help-modal li{margin-bottom:6px;}
-.help-modal code{
-  background:#f3f4f6;padding:2px 6px;border-radius:4px;
-  font-size:13px;color:#1f2937;
-}
-.help-modal .tip{
-  background:#fef3c7;border-left:4px solid #f59e0b;
-  padding:10px 14px;margin:10px 0;border-radius:6px;
-}
-.help-modal .danger{
-  background:#fee2e2;border-left:4px solid #dc2626;
-  padding:10px 14px;margin:10px 0;border-radius:6px;
-}
-.help-close{
-  position:sticky;top:0;float:right;
-  background:#ef4444;color:white;border:none;
-  width:32px;height:32px;border-radius:50%;
-  cursor:pointer;font-size:18px;line-height:1;
-}
+/* Help FAB */
 .help-fab{
   position:fixed;bottom:20px;right:20px;
   background:#4f46e5;color:white;border:none;
   width:54px;height:54px;border-radius:50%;
   font-size:22px;cursor:pointer;
-  box-shadow:0 4px 12px rgba(0,0,0,0.2);
-  z-index:9998;
+  box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:9998;
 }
-.help-fab:hover{background:#10b981;}
-/* ============ END HELP ============ */
+.help-overlay{
+  display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.5);z-index:9999;
+  justify-content:center;align-items:center;padding:20px;box-sizing:border-box;
+}
+.help-overlay.show{display:flex;}
+.help-modal{
+  background:white;border-radius:14px;max-width:700px;width:100%;
+  max-height:90vh;overflow-y:auto;padding:24px;
+}
+.help-modal h2{margin-top:0;color:#4f46e5;}
+.help-modal h3{color:#1f2937;border-bottom:2px solid #e5e7eb;padding-bottom:6px;margin-top:20px;}
+.help-modal code{background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:13px;}
+.help-modal .tip{background:#fef3c7;border-left:4px solid #f59e0b;padding:10px 14px;margin:10px 0;border-radius:6px;}
+.help-modal .danger{background:#fee2e2;border-left:4px solid #dc2626;padding:10px 14px;margin:10px 0;border-radius:6px;}
+.help-close{background:#ef4444;color:white;border:none;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;float:right;}
+
+@media (max-width:768px){
+  body{padding:14px;}
+  .card{padding:16px;}
+  video, iframe.video-player{height:240px;}
+  h1{font-size:24px;}
+  button{font-size:14px;padding:12px;}
+  .gap-input{width:100px;font-size:15px;}
+  textarea{font-size:16px;}
+}
 </style>
 </head>
-
-<body>
 <body>
 
-<style>
-  body {
-    font-family: Inter, system-ui, sans-serif;
-    background: #f5f6f8;
-    margin: 0;
-    padding: 40px;
-    color: #111;
-  }
+<div class="container" id="app">
+  <h1>🎧 Create an Exercise</h1>
+  <div class="sub">Upload a video or paste a link. We'll prepare everything for you.</div>
 
-  .container {
-    max-width: 720px;
-    margin: auto;
-  }
+  <!-- Step 1: Video Source -->
+  <div class="card" id="step1Card">
+    <h2 style="margin-top:0;">1. Add your video</h2>
 
-  h1 {
-    font-size: 30px;
-    margin-bottom: 8px;
-  }
-
-  .sub {
-    color: #666;
-    margin-bottom: 30px;
-  }
-
-  .card {
-    background: white;
-    border-radius: 18px;
-    padding: 22px;
-    margin-bottom: 18px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-  }
-
-  .dropzone {
-    border: 2px dashed #d0d5dd;
-    border-radius: 14px;
-    padding: 40px;
-    text-align: center;
-    cursor: pointer;
-  }
-
-  .dropzone:hover {
-    border-color: #111;
-    background: #fafafa;
-  }
-
-  input[type="file"] {
-    display: none;
-  }
-
-  input, textarea {
-    width: 100%;
-    margin-top: 10px;
-    padding: 12px;
-    border-radius: 10px;
-    border: 1px solid #e5e7eb;
-    font-size: 14px;
-  }
-
-  textarea {
-    height: 220px;
-    resize: vertical;
-  }
-
-  button {
-    width: 100%;
-    padding: 15px;
-    border-radius: 14px;
-    border: none;
-    background: #111;
-    color: white;
-    font-size: 16px;
-    cursor: pointer;
-  }
-
-  button:disabled {
-    background: #999;
-    cursor: not-allowed;
-  }
-
-  .status {
-    margin-top: 10px;
-    font-size: 14px;
-    color: #555;
-  }
-</style>
-
-<div class="container">
-  <h1>Create a Exercise</h1>
-  <div class="sub">Upload video or paste a link. We’ll prepare everything for you.</div>
-
-  <!-- Upload -->
-  <div class="card">
     <div class="dropzone" id="dropzone">
-      <strong>Upload your video</strong>
-      Click or drag your video here
-<div class="hint">MP4, MOV, MKV supported</div>
+      <strong>Click or drag a video here</strong>
+      <div class="hint">MP4, MOV, MKV, WEBM, AVI</div>
     </div>
-    <input type="file" id="fileInput" accept="video/*,.mp4,.mov,.mkv,.webm">
+    <input type="file" id="fileInput" accept="video/*,.mp4,.mov,.mkv,.webm,.avi">
+
+    <div style="margin:16px 0;text-align:center;color:#999;font-size:13px;">— OR —</div>
+
+    <label>Paste a YouTube or direct video link</label>
+    <input type="text" id="videoUrl" placeholder="https://youtube.com/... or https://...mp4">
+    <button class="primary-blue" onclick="useVideoLink()">Use this link</button>
+
+    <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar">0%</div></div>
     <div class="status" id="uploadStatus"></div>
   </div>
 
-  <!-- URL -->
-  <div class="card">
-    <label>Or paste a link</label>
-    <input type="text" id="audioUrl" placeholder="https://...">
-    <button onclick="handleUrl()">Use this video</button>
+  <!-- Step 2: Video Player (hidden until video is loaded) -->
+  <div class="card" id="step2Card" style="display:none;">
+    <h2 style="margin-top:0;">2. Your video</h2>
+    <div id="videoBox"></div>
   </div>
 
-  <!-- Transcript -->
-  <div class="card">
-    <label>Text (you can edit this)</label>
-    <textarea id="transcript" placeholder="Your text will appear here..."></textarea>
+  <!-- Step 3: Transcript -->
+  <div class="card" id="step3Card" style="display:none;">
+    <h2 style="margin-top:0;">3. Transcript</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+      <button class="primary-blue" onclick="getTranscript()" id="transcribeBtn">✨ Auto-Transcribe</button>
+      <button class="secondary" onclick="document.getElementById('transcript').value=''">Clear</button>
+    </div>
+    <label>Edit transcript if needed:</label>
+    <textarea id="transcript" placeholder="Click 'Auto-Transcribe' or type your text here..."></textarea>
+    <div class="status" id="transcribeStatus"></div>
+
+    <div id="transcriptTimestamps" style="margin-top:14px;display:none;">
+      <label>Timestamped lines (click to seek video):</label>
+      <div class="transcript-output" id="transcriptOutput"></div>
+    </div>
   </div>
 
-  <!-- Generate -->
-  <button id="generateBtn">Generate Exercise</button>
-  <div class="status" id="status"></div>
+  <!-- Step 4: Generate / Edit Sections -->
+  <div class="card" id="step4Card" style="display:none;">
+    <h2 style="margin-top:0;">4. Build sections</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+      <button class="success" onclick="generateGapsFromTranscript()">🤖 AI Generate Gaps</button>
+      <button class="secondary" onclick="addSection()">+ Add Section Manually</button>
+    </div>
+    <div id="sections"></div>
+  </div>
+
+  <!-- Step 5: Final Actions -->
+  <div class="card" id="step5Card" style="display:none;">
+    <h2 style="margin-top:0;">5. Save & share</h2>
+    <button class="primary-blue full" onclick="previewExercise()">👀 Preview Exercise</button>
+    <button class="success full" onclick="generateLink()">🔗 Generate Student Link</button>
+    <button class="secondary full" onclick="saveExercise()">💾 Download as JSON</button>
+    <input type="file" id="loadFile" style="display:none" accept=".json" onchange="loadExerciseFile(event)">
+    <button class="secondary full" onclick="document.getElementById('loadFile').click()">📂 Load Saved Exercise</button>
+    <div class="status" id="link"></div>
+  </div>
+</div>
+
+<!-- Help button -->
+<button class="help-fab" onclick="document.getElementById('helpOverlay').classList.add('show')" title="Help">❓</button>
+
+<div class="help-overlay" id="helpOverlay" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="help-modal">
+    <button class="help-close" onclick="document.getElementById('helpOverlay').classList.remove('show')">×</button>
+    <h2>📖 How to Use</h2>
+    <p>Create gap-fill listening exercises in 5 simple steps.</p>
+
+    <h3>1. Add a video</h3>
+    <ul>
+      <li><b>Upload</b> — drag/drop or click. Any common format works.</li>
+      <li><b>Link</b> — paste a YouTube URL or direct .mp4 link.</li>
+    </ul>
+
+    <h3>2. Get transcript</h3>
+    <p>Click <b>✨ Auto-Transcribe</b> for AI-generated timestamps, or type your own text.</p>
+
+    <h3>3. Build sections</h3>
+    <p>Click <b>🤖 AI Generate Gaps</b> to auto-create exercise sections, or add them manually.</p>
+    <ul>
+      <li>Use <code>_</code> in the text for each gap.</li>
+      <li>Comma-separate the answers.</li>
+      <li>Set start/end times to control which part of the video plays for each section.</li>
+    </ul>
+
+    <h3>4. Preview & share</h3>
+    <ol>
+      <li><b>Preview</b> — see what students will see.</li>
+      <li><b>Generate Link</b> — copy and share with students. No signup required.</li>
+      <li><b>Download as JSON</b> — keep a backup file.</li>
+    </ol>
+
+    <div class="tip">💡 Cloud uploads take 1-3 minutes to process before you can use them.</div>
+    <div class="danger">⚠️ Local files are preview-only — students can't see them. Use Cloud Upload for sharing.</div>
+  </div>
 </div>
 
 <script>
+// ============================================================
+// 🌐 Global state
+// ============================================================
+const WORKER = window.WORKER_URL;
+let lessonCache = null;
+let currentSection = 0;
+let stopTimer = null;
+let answersMap = {};
+let hasChecked = false;
+
+// Video state
+let videoMode = null;          // "youtube" | "mp4" | "bunny"
+let bunnyGuid = null;
+let bunnyDirectUrl = null;
+let bunnyEmbedUrl = null;
+let externalVideoUrl = null;   // YouTube/MP4 link
+let builderPlayer = null;
+let ytPlayer = null;
+let ytReady = false;
+
+// Transcript state
+let transcriptData = [];       // [{time, text}]
+let plainTranscriptText = "";  // raw text for AI
+let transcriptJobId = null;
+
+// ============================================================
+// 🔁 Routing — student vs builder
+// ============================================================
+const params = new URLSearchParams(location.search);
+const rawData = params.get("data");
+if (rawData) {
+  try { loadStudent(JSON.parse(decodeURIComponent(rawData)), false); }
+  catch (e) {
+    document.getElementById("app").innerHTML =
+      '<div class="card"><h2>⚠️ Invalid lesson link.</h2><p>The link appears to be corrupted.</p></div>';
+  }
+}
+
+// ============================================================
+// 🎬 VIDEO HANDLING
+// ============================================================
+
+// --- File upload ---
 const dropzone = document.getElementById("dropzone");
 const fileInput = document.getElementById("fileInput");
-const uploadStatus = document.getElementById("uploadStatus");
-const status = document.getElementById("status");
-const generateBtn = document.getElementById("generateBtn");
 
-// Click to upload
-dropzone.onclick = () => fileInput.click();
+if (dropzone) {
+  dropzone.onclick = () => fileInput.click();
+  dropzone.ondragover = e => { e.preventDefault(); dropzone.classList.add("dragover"); };
+  dropzone.ondragleave = () => dropzone.classList.remove("dragover");
+  dropzone.ondrop = e => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+    if (e.dataTransfer.files[0]) handleFileUpload(e.dataTransfer.files[0]);
+  };
+  fileInput.onchange = () => {
+    if (fileInput.files[0]) handleFileUpload(fileInput.files[0]);
+  };
+}
 
-// Drag styling
-dropzone.ondragover = (e) => {
-  e.preventDefault();
-  dropzone.style.borderColor = "#111";
-};
+async function handleFileUpload(file) {
+  const status = document.getElementById("uploadStatus");
+  const progressWrap = document.getElementById("progressWrap");
+  const progressBar = document.getElementById("progressBar");
 
-dropzone.ondragleave = () => {
-  dropzone.style.borderColor = "#d0d5dd";
-};
-
-// Drop file
-dropzone.ondrop = (e) => {
-  e.preventDefault();
-  fileInput.files = e.dataTransfer.files;
-  handleFile(fileInput.files[0]);
-};
-
-fileInput.onchange = () => {
-  handleFile(fileInput.files[0]);
-};
-
-// TEMP file handler (we connect real transcription next)
-async function handleFile(file) {
-  uploadStatus.innerText = "Uploading video...";
-
-  const formData = new FormData();
-  formData.append("file", file);
+  status.className = "status";
+  status.innerText = "⏳ Creating upload entry...";
+  progressWrap.style.display = "block";
+  progressBar.style.width = "0%";
+  progressBar.innerText = "0%";
 
   try {
-    const res = await fetch(
-      "https://gapfill-ai.williamspowerlifting.workers.dev/upload-video",
-      {
-        method: "POST",
-        body: formData
-      }
-    );
+    // Step 1: ask Worker to create a Bunny video entry
+    const createRes = await fetch(WORKER + "/create-bunny-video", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: file.name })
+    });
+    if (!createRes.ok) throw new Error("Create failed: " + createRes.status);
+    const created = await createRes.json();
+    bunnyGuid = created.guid;
 
-    const data = await res.json();
+    // Step 2: PUT file via Worker proxy (Worker adds Bunny API key)
+    status.innerText = "⏳ Uploading " + file.name + "...";
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", WORKER + "/upload-bunny-chunk?guid=" + bunnyGuid);
+      xhr.upload.onprogress = e => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          progressBar.style.width = pct + "%";
+          progressBar.innerText = pct + "%";
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error("Upload failed: " + xhr.status));
+      };
+      xhr.onerror = () => reject(new Error("Network error"));
+      xhr.send(file);
+    });
 
-    if (!data.text) {
-      throw new Error("No transcript returned");
-    }
+    bunnyDirectUrl = "https://" + created.cdnHost + "/" + bunnyGuid + "/play_720p.mp4";
+    bunnyEmbedUrl = "https://iframe.mediadelivery.net/embed/" + created.libraryId + "/" + bunnyGuid;
+    videoMode = "bunny";
 
-    document.getElementById("transcript").value = data.text;
+    progressBar.style.width = "100%";
+    progressBar.innerText = "Done";
+    status.className = "status success";
+    status.innerText = "✅ Uploaded! Bunny is converting (1-3 minutes). You can start building now.";
 
-    uploadStatus.innerText = "Transcript ready ✓";
+    showVideoPlayer();
+    revealStep("step3Card");
+    revealStep("step4Card");
+    revealStep("step5Card");
 
   } catch (err) {
     console.error(err);
-    uploadStatus.innerText = "Upload failed";
+    status.className = "status error";
+    status.innerText = "❌ " + err.message;
+    progressWrap.style.display = "none";
   }
 }
-// Generate Exercise
-generateBtn.onclick = async () => {
-  const text = document.getElementById("transcript").value;
 
-  if (!text) {
-    alert("Please add some text first.");
+// --- Link handler (YouTube or MP4) ---
+function useVideoLink() {
+  const url = document.getElementById("videoUrl").value.trim();
+  if (!url) { alert("Please paste a video link."); return; }
+
+  externalVideoUrl = url;
+  if (url.includes("youtube.com") || url.includes("youtu.be")) {
+    videoMode = "youtube";
+  } else {
+    videoMode = "mp4";
+  }
+  bunnyGuid = null;
+  bunnyDirectUrl = null;
+
+  document.getElementById("uploadStatus").className = "status success";
+  document.getElementById("uploadStatus").innerText = "✅ Link loaded.";
+
+  showVideoPlayer();
+  revealStep("step3Card");
+  revealStep("step4Card");
+  revealStep("step5Card");
+}
+
+function getYTid(url) {
+  const m = url.match(/(?:v=|youtu\.be\/|embed\/)([^&?]+)/);
+  return m ? m[1] : null;
+}
+
+function loadYTApi(cb) {
+  if (window.YT && YT.Player) { cb(); return; }
+  const tag = document.createElement("script");
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.body.appendChild(tag);
+  window.onYouTubeIframeAPIReady = cb;
+}
+
+function showVideoPlayer() {
+  const box = document.getElementById("videoBox");
+  document.getElementById("step2Card").style.display = "block";
+
+  if (videoMode === "youtube") {
+    box.innerHTML = '<div id="builderPlayer" class="video-player"></div>';
+    loadYTApi(() => {
+      builderPlayer = new YT.Player("builderPlayer", {
+        videoId: getYTid(externalVideoUrl),
+        events: { onReady: () => { ytReady = true; } }
+      });
+    });
+  } else if (videoMode === "mp4") {
+    box.innerHTML = '<video id="builderPlayer" class="video-player" controls><source src="' +
+      escapeAttr(externalVideoUrl) + '"></video>';
+    builderPlayer = document.getElementById("builderPlayer");
+    ytReady = true;
+  } else if (videoMode === "bunny") {
+    // Use iframe initially (instant), switch to direct mp4 once available for time control
+    box.innerHTML = '<iframe id="builderPlayer" class="video-player" src="' + bunnyEmbedUrl +
+      '?autoplay=false" allowfullscreen allow="autoplay;encrypted-media"></iframe>';
+    setTimeout(tryDirectBunnyVideo, 3000);
+    ytReady = false;
+  }
+}
+
+async function tryDirectBunnyVideo() {
+  if (!bunnyDirectUrl) return;
+  try {
+    const head = await fetch(bunnyDirectUrl, { method: "HEAD" });
+    if (head.ok) {
+      const box = document.getElementById("videoBox");
+      box.innerHTML = '<video id="builderPlayer" class="video-player" controls crossorigin="anonymous"><source src="' +
+        bunnyDirectUrl + '" type="video/mp4"></video>';
+      builderPlayer = document.getElementById("builderPlayer");
+      ytReady = true;
+    } else {
+      setTimeout(tryDirectBunnyVideo, 5000);
+    }
+  } catch {
+    setTimeout(tryDirectBunnyVideo, 5000);
+  }
+}
+
+function getTime() {
+  if (!builderPlayer || !ytReady) return 0;
+  if (builderPlayer.currentTime !== undefined) return builderPlayer.currentTime;
+  if (builderPlayer.getCurrentTime) return builderPlayer.getCurrentTime();
+  return 0;
+}
+
+function seekTo(time) {
+  if (!builderPlayer || !ytReady) return;
+  if (typeof builderPlayer.seekTo === "function") {
+    builderPlayer.seekTo(time, true);
+    if (builderPlayer.playVideo) builderPlayer.playVideo();
+  } else if (builderPlayer.currentTime !== undefined) {
+    builderPlayer.currentTime = time;
+    builderPlayer.play();
+  }
+}
+
+function revealStep(id) {
+  document.getElementById(id).style.display = "block";
+}
+
+function escapeAttr(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function escapeHtml(s) { return escapeAttr(s); }
+
+function formatTime(sec) {
+  sec = Math.floor(sec);
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return m + ":" + (s < 10 ? "0" : "") + s;
+}
+</script>
+<script>
+// ============================================================
+// 📝 TRANSCRIPT
+// ============================================================
+
+async function getTranscript() {
+  const status = document.getElementById("transcribeStatus");
+  const btn = document.getElementById("transcribeBtn");
+
+  // Determine which audio URL to send
+  let audioUrl = null;
+  if (videoMode === "bunny") {
+    if (!bunnyDirectUrl) {
+      status.className = "status error";
+      status.innerText = "❌ Wait for upload to finish processing first.";
+      return;
+    }
+    // Verify it's accessible
+    try {
+      const head = await fetch(bunnyDirectUrl, { method: "HEAD" });
+      if (!head.ok) {
+        status.className = "status error";
+        status.innerText = "⏳ Video still processing. Try again in 1-2 minutes.";
+        return;
+      }
+    } catch {
+      status.className = "status error";
+      status.innerText = "⏳ Video still processing. Try again in 1-2 minutes.";
+      return;
+    }
+    audioUrl = bunnyDirectUrl;
+  } else if (videoMode === "youtube") {
+    status.className = "status error";
+    status.innerText = "❌ YouTube can't be auto-transcribed. Please upload the video file or paste the transcript manually.";
+    return;
+  } else if (videoMode === "mp4") {
+    audioUrl = externalVideoUrl;
+  } else {
+    status.className = "status error";
+    status.innerText = "❌ Add a video first.";
     return;
   }
 
-  generateBtn.disabled = true;
-  status.innerText = "Creating your Exercise...";
+  btn.disabled = true;
+  status.className = "status";
+  status.innerText = "⏳ Transcribing... this may take 30-60 seconds.";
 
   try {
-    const res = await fetch("https://gapfill-ai.williamspowerlifting.workers.dev/generate-gaps", {
+    const res = await fetch(WORKER + "/transcribe", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        transcript: [{ text }]
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ audioUrl })
     });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error("Transcribe failed: " + errText);
+    }
 
     const data = await res.json();
 
-    if (data.sections) {
-      document.getElementById("transcript").value =
-        data.sections.map(s => s.text).join("\\n\\n");
+    // If Worker timed out, poll for completion
+    if (data.pending && data.jobId) {
+      transcriptJobId = data.jobId;
+      status.innerText = "⏳ Still processing — polling for result...";
+      await pollTranscriptJob(data.jobId);
+    } else {
+      applyTranscript(data);
     }
-
-    status.innerText = "Exercise ready ✓";
   } catch (err) {
     console.error(err);
-    status.innerText = "Something went wrong";
+    status.className = "status error";
+    status.innerText = "❌ " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function pollTranscriptJob(jobId) {
+  const status = document.getElementById("transcribeStatus");
+  const maxAttempts = 30;
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise(r => setTimeout(r, 4000));
+    try {
+      const res = await fetch(WORKER + "/transcribe-status?jobId=" + jobId);
+      const data = await res.json();
+      if (data.done) {
+        applyTranscript(data);
+        return;
+      }
+      status.innerText = "⏳ Still transcribing... (" + ((i + 1) * 4) + "s)";
+    } catch (e) {
+      console.warn("Poll error:", e);
+    }
+  }
+  status.className = "status error";
+  status.innerText = "❌ Transcription timed out. Try a shorter video.";
+}
+
+function applyTranscript(data) {
+  plainTranscriptText = data.text || "";
+  document.getElementById("transcript").value = plainTranscriptText;
+
+  // Build timestamped segments
+  transcriptData = [];
+  if (data.utterances && data.utterances.length) {
+    data.utterances.forEach(u => transcriptData.push({ time: u.start / 1000, text: u.text }));
+  } else if (data.words && data.words.length) {
+    const words = data.words;
+    let chunk = [], startT = words[0].start / 1000;
+    words.forEach((w, idx) => {
+      chunk.push(w.text);
+      if (chunk.length >= 12 || idx === words.length - 1) {
+        transcriptData.push({ time: startT, text: chunk.join(" ") });
+        chunk = [];
+        if (idx < words.length - 1) startT = words[idx + 1].start / 1000;
+      }
+    });
   }
 
-  generateBtn.disabled = false;
-};
+  renderTranscriptTimestamps();
+
+  const status = document.getElementById("transcribeStatus");
+  status.className = "status success";
+  status.innerText = "✅ Transcript ready (" + transcriptData.length + " segments).";
+}
+
+function renderTranscriptTimestamps() {
+  const wrap = document.getElementById("transcriptTimestamps");
+  const out = document.getElementById("transcriptOutput");
+  if (!transcriptData.length) {
+    wrap.style.display = "none";
+    return;
+  }
+  wrap.style.display = "block";
+  out.innerHTML = transcriptData.map((entry, idx) => {
+    return '<div class="transcript-line">' +
+      '<span class="transcript-time" onclick="seekTo(' + entry.time + ')">' + formatTime(entry.time) + '</span>' +
+      escapeHtml(entry.text) +
+      ' <button class="mini-btn success" onclick="useStampForSection(' + entry.time + ',\'start\')">→ Start</button>' +
+      ' <button class="mini-btn" style="background:#f59e0b;color:white;" onclick="useStampForSection(' + entry.time + ',\'end\')">→ End</button>' +
+      '</div>';
+  }).join("");
+}
+
+function useStampForSection(time, which) {
+  const sections = document.querySelectorAll(".section-builder");
+  if (!sections.length) { alert("Add a section first."); return; }
+  const target = sections[sections.length - 1];
+  target.querySelector("." + which).value = Math.floor(time);
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  target.style.outline = "2px solid #10b981";
+  setTimeout(() => target.style.outline = "", 1200);
+}
+
+// ============================================================
+// 🤖 AI GAP GENERATION
+// ============================================================
+async function generateGapsFromTranscript() {
+  const transcript = document.getElementById("transcript").value.trim();
+  if (!transcript) { alert("Add or generate a transcript first."); return; }
+
+  const level = prompt("Student level? (A1, A2, B1, B2, C1)", "B1");
+  if (!level) return;
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.innerText = "⏳ Generating gaps...";
+
+  try {
+    const res = await fetch(WORKER + "/generate-gaps", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transcript, level })
+    });
+    if (!res.ok) throw new Error("Server error: " + res.status);
+    const data = await res.json();
+    if (!data.sections || !Array.isArray(data.sections)) throw new Error("Invalid AI response");
+
+    document.getElementById("sections").innerHTML = "";
+    data.sections.forEach((sec, idx) => {
+      // Try to align with transcript timestamps
+      let start = 0, end = 10;
+      if (transcriptData.length) {
+        const matchIdx = findTranscriptMatch(sec.text);
+        if (matchIdx >= 0) {
+          start = Math.floor(transcriptData[matchIdx].time);
+          end = Math.floor(transcriptData[matchIdx + 1]?.time || start + 10);
+        } else {
+          start = Math.floor((idx / data.sections.length) * (transcriptData[transcriptData.length - 1]?.time || 60));
+          end = start + 10;
+        }
+      }
+      addSection({ text: sec.text, answers: sec.answers, start, end });
+    });
+
+    alert("✅ " + data.sections.length + " sections created!");
+  } catch (err) {
+    console.error(err);
+    alert("❌ " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "🤖 AI Generate Gaps";
+  }
+}
+
+function findTranscriptMatch(sectionText) {
+  // Strip gaps, find best matching transcript line
+  const clean = sectionText.replace(/_+/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  const firstWords = clean.split(" ").slice(0, 4).join(" ");
+  for (let i = 0; i < transcriptData.length; i++) {
+    if (transcriptData[i].text.toLowerCase().includes(firstWords)) return i;
+  }
+  return -1;
+}
+
+// ============================================================
+// 🧱 SECTIONS (gap-fill builder)
+// ============================================================
+function addSection(data) {
+  data = data || {};
+  const div = document.createElement("div");
+  div.className = "section-builder";
+  div.innerHTML =
+    '<label>Text (use _ for gaps)</label>' +
+    '<textarea class="text" style="height:60px;">' + escapeHtml(data.text || "") + '</textarea>' +
+    '<label>Answers (comma-separated)</label>' +
+    '<input class="answers" value="' + escapeAttr((data.answers || []).join(",")) + '">' +
+    '<div class="gap-warning"></div>' +
+    '<div class="row" style="margin-top:8px;">' +
+      '<label style="flex:0 0 60px;">Start:</label>' +
+      '<input type="number" class="start" value="' + (data.start || 0) + '" style="flex:0 0 80px;">' +
+      '<button class="secondary" onclick="this.parentElement.querySelector(\'.start\').value=Math.floor(getTime())">Set ▶</button>' +
+    '</div>' +
+    '<div class="row" style="margin-top:6px;">' +
+      '<label style="flex:0 0 60px;">End:</label>' +
+      '<input type="number" class="end" value="' + (data.end || 10) + '" style="flex:0 0 80px;">' +
+      '<button class="secondary" onclick="this.parentElement.querySelector(\'.end\').value=Math.floor(getTime())">Set ⏸</button>' +
+    '</div>' +
+    '<div class="row" style="margin-top:8px;">' +
+      '<button class="secondary" onclick="testSection(this)">▶ Test play</button>' +
+      '<button class="danger" onclick="this.closest(\'.section-builder\').remove()">🗑️ Remove</button>' +
+    '</div>';
+
+  div.querySelector(".text").addEventListener("input", () => validateSection(div));
+  div.querySelector(".answers").addEventListener("input", () => validateSection(div));
+  document.getElementById("sections").appendChild(div);
+  validateSection(div);
+}
+
+function validateSection(div) {
+  const text = div.querySelector(".text").value;
+  const answers = div.querySelector(".answers").value;
+  const gapCount = (text.match(/_+/g) || []).length;
+  const answerCount = answers.split(",").map(a => a.trim()).filter(Boolean).length;
+  const warn = div.querySelector(".gap-warning");
+  warn.innerText = (gapCount !== answerCount)
+    ? "⚠️ Gaps: " + gapCount + " | Answers: " + answerCount + " (must match)"
+    : "";
+}
+
+function testSection(btn) {
+  const div = btn.closest(".section-builder");
+  const start = +div.querySelector(".start").value;
+  const end = +div.querySelector(".end").value;
+  if (!builderPlayer) { alert("No video loaded."); return; }
+
+  if (typeof builderPlayer.seekTo === "function") {
+    builderPlayer.seekTo(start, true);
+    builderPlayer.playVideo();
+    clearInterval(stopTimer);
+    stopTimer = setInterval(() => {
+      if (builderPlayer.getCurrentTime() >= end) {
+        builderPlayer.pauseVideo();
+        clearInterval(stopTimer);
+      }
+    }, 200);
+  } else {
+    builderPlayer.currentTime = start;
+    builderPlayer.play();
+    clearInterval(stopTimer);
+    stopTimer = setInterval(() => {
+      if (builderPlayer.currentTime >= end) {
+        builderPlayer.pause();
+        clearInterval(stopTimer);
+      }
+    }, 200);
+  }
+}
+
+// ============================================================
+// 📦 COLLECT / SAVE / LOAD / SHARE
+// ============================================================
+function collect() {
+  let videoUrl = "";
+  let isShareable = true;
+
+  if (videoMode === "bunny" && bunnyDirectUrl) {
+    videoUrl = bunnyDirectUrl;
+  } else if (videoMode === "youtube" || videoMode === "mp4") {
+    videoUrl = externalVideoUrl;
+  }
+
+  return {
+    videoUrl,
+    videoMode,
+    bunnyGuid: videoMode === "bunny" ? bunnyGuid : null,
+    isShareable,
+    sections: [...document.querySelectorAll(".section-builder")].map(s => ({
+      text: s.querySelector(".text").value,
+      answers: s.querySelector(".answers").value.split(",").map(a => a.trim()),
+      start: +s.querySelector(".start").value,
+      end: +s.querySelector(".end").value
+    })),
+    transcript: transcriptData
+  };
+}
+
+function previewExercise() {
+  const data = collect();
+  if (!data.videoUrl) { alert("Add a video first."); return; }
+  if (!data.sections.length) { alert("Add at least one section first."); return; }
+  loadStudent(data, true);
+}
+
+function generateLink() {
+  const data = collect();
+  if (!data.videoUrl) { alert("Add a video first."); return; }
+  if (!data.sections.length) { alert("Add at least one section first."); return; }
+
+  const slim = Object.assign({}, data);
+  delete slim.transcript; // keep URL short
+  const encoded = encodeURIComponent(JSON.stringify(slim));
+  const link = location.origin + location.pathname + "?data=" + encoded;
+
+  document.getElementById("link").className = "status success";
+  document.getElementById("link").innerHTML =
+    '<b>✅ Lesson link:</b><br><a href="' + link + '" target="_blank" style="word-break:break-all;">' + link + '</a>' +
+    '<br><button class="primary-blue" style="margin-top:8px;" onclick="copyLink(\'' + link.replace(/'/g, "\\'") + '\')">📋 Copy Link</button>';
+}
+
+function copyLink(link) {
+  navigator.clipboard.writeText(link).then(() => alert("Link copied!"));
+}
+
+function saveExercise() {
+  const data = collect();
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  let name = prompt("Name for this exercise:", "exercise");
+  if (!name) name = "exercise";
+  name = name.replace(/\.json$/i, "");
+  a.download = name + ".json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function loadExerciseFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      restoreExercise(data);
+    } catch {
+      alert("Invalid exercise file.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function restoreExercise(data) {
+  // Restore video
+  if (data.videoMode === "bunny" && data.bunnyGuid) {
+    bunnyGuid = data.bunnyGuid;
+    bunnyDirectUrl = data.videoUrl;
+    bunnyEmbedUrl = "https://iframe.mediadelivery.net/embed/" + (data.libraryId || "650012") + "/" + data.bunnyGuid;
+    videoMode = "bunny";
+  } else if (data.videoMode === "youtube" || data.videoMode === "mp4") {
+    videoMode = data.videoMode;
+    externalVideoUrl = data.videoUrl;
+    document.getElementById("videoUrl").value = data.videoUrl;
+  }
+  showVideoPlayer();
+  revealStep("step3Card");
+  revealStep("step4Card");
+  revealStep("step5Card");
+
+  // Restore transcript
+  if (data.transcript && data.transcript.length) {
+    transcriptData = data.transcript;
+    plainTranscriptText = data.transcript.map(t => t.text).join(" ");
+    document.getElementById("transcript").value = plainTranscriptText;
+    renderTranscriptTimestamps();
+  }
+
+  // Restore sections
+  document.getElementById("sections").innerHTML = "";
+  (data.sections || []).forEach(s => addSection(s));
+
+  document.getElementById("uploadStatus").className = "status success";
+  document.getElementById("uploadStatus").innerText = "✅ Exercise loaded.";
+}
+
+// ============================================================
+// 🧑‍🎓 STUDENT VIEW
+// ============================================================
+function loadStudent(data, previewMode) {
+  lessonCache = data;
+  answersMap = {};
+  hasChecked = false;
+
+  const isYT = data.videoUrl && (data.videoUrl.includes("youtube") || data.videoUrl.includes("youtu.be"));
+  const backBtn = previewMode
+    ? '<button class="secondary" onclick="location.reload()">⬅ Back to builder</button>'
+    : "";
+
+  const videoTag = isYT
+    ? '<div id="player" class="video-player"></div>'
+    : '<video id="video" class="video-player" controls crossorigin="anonymous"><source src="' + escapeAttr(data.videoUrl) + '"></video>';
+
+  document.getElementById("app").innerHTML =
+    '<div style="margin-bottom:14px;">' + backBtn + '</div>' +
+    '<h1>🎧 Listening Exercise</h1>' +
+    '<div class="card">' + videoTag + '</div>' +
+    '<div class="card">' +
+      '<div id="buttons" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;"></div>' +
+      '<div id="text"></div>' +
+    '</div>' +
+    '<div class="card">' +
+      '<button class="primary-blue" onclick="playAll()">▶ Play All</button>' +
+      '<button class="success" onclick="checkAnswers()">✓ Check Answers</button>' +
+      '<button class="secondary" id="revealBtn" disabled onclick="reveal()">👁 Reveal Answers</button>' +
+      '<button class="secondary" onclick="repeat()">🔁 Repeat Section</button>' +
+      '<div class="status" id="result"></div>' +
+    '</div>';
+
+  if (isYT) {
+    loadYTApi(() => {
+      ytPlayer = new YT.Player("player", { videoId: getYTid(data.videoUrl) });
+    });
+  } else {
+    ytPlayer = null;
+  }
+
+  renderStudentButtons(data);
+  renderStudentText(data);
+}
+
+function renderStudentButtons(data) {
+  const box = document.getElementById("buttons");
+  box.innerHTML = "";
+  data.sections.forEach((_, i) => {
+    const b = document.createElement("button");
+    b.className = "primary-blue";
+    b.textContent = "Section " + (i + 1);
+    b.onclick = () => playSection(i, data);
+    box.appendChild(b);
+  });
+}
+
+function renderStudentText(data) {
+  const container = document.getElementById("text");
+  container.innerHTML = "";
+  data.sections.forEach((sec, si) => {
+    const sectionDiv = document.createElement("div");
+    sectionDiv.id = "section-" + si;
+    const parts = sec.text.split(/_+/g);
+    parts.forEach((p, i) => {
+      sectionDiv.appendChild(document.createTextNode(p));
+      if (i < parts.length - 1) {
+        const wrap = document.createElement("span");
+        wrap.className = "gap-wrap";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "gap-input";
+        input.id = "q" + si + "_" + i;
+        answersMap[input.id] = sec.answers[i] || "";
+        wrap.appendChild(input);
+        sectionDiv.appendChild(wrap);
+      }
+    });
+    container.appendChild(sectionDiv);
+  });
+}
+
+function playAll() {
+  if (!lessonCache) return;
+  if (ytPlayer) { ytPlayer.seekTo(0, true); ytPlayer.playVideo(); }
+  else {
+    const v = document.getElementById("video");
+    if (v) { v.currentTime = 0; v.play(); }
+  }
+}
+
+function playSection(i, data) {
+  currentSection = i;
+  document.querySelectorAll("#text > div").forEach((d, idx) => {
+    d.classList.toggle("section-active", idx === i);
+  });
+  const sec = data.sections[i];
+
+  if (ytPlayer) {
+    ytPlayer.seekTo(sec.start, true);
+    ytPlayer.playVideo();
+    clearInterval(stopTimer);
+    stopTimer = setInterval(() => {
+      if (ytPlayer.getCurrentTime() >= sec.end) {
+        ytPlayer.pauseVideo();
+        clearInterval(stopTimer);
+      }
+    }, 200);
+  } else {
+    const v = document.getElementById("video");
+    v.currentTime = sec.start;
+    v.play();
+    clearInterval(stopTimer);
+    stopTimer = setInterval(() => {
+      if (v.currentTime >= sec.end) {
+        v.pause();
+        clearInterval(stopTimer);
+      }
+    }, 200);
+  }
+}
+
+function checkAnswers() {
+  let score = 0;
+  Object.keys(answersMap).forEach(id => {
+    const el = document.getElementById(id);
+    const correct = answersMap[id].toLowerCase().trim();
+    const user = el.value.toLowerCase().trim();
+    el.classList.remove("correct", "incorrect");
+    if (user === correct) { el.classList.add("correct"); score++; }
+    else { el.classList.add("incorrect"); }
+  });
+  document.getElementById("result").innerText = "Score: " + score + " / " + Object.keys(answersMap).length;
+  hasChecked = true;
+  const btn = document.getElementById("revealBtn");
+  btn.disabled = false;
+  btn.classList.remove("secondary");
+  btn.classList.add("primary-blue");
+}
+
+function reveal() {
+  if (!hasChecked) return;
+  Object.keys(answersMap).forEach(id => {
+    document.getElementById(id).value = answersMap[id];
+  });
+}
+
+function repeat() {
+  if (lessonCache) playSection(currentSection, lessonCache);
+}
 </script>
+
 </body>
 </html>
