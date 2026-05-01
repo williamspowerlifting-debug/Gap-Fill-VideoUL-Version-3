@@ -14,7 +14,7 @@
   window.ASSEMBLYAI_CONFIG = {
     API_KEY: "bfdb9b59994d4714b6e94d8814921fe0"
   };
-  async function generateFullLessonAI(){
+  async function generateFullExerciseAI(){
   const topic = prompt("Enter a topic (e.g. travel, business, daily life):");
   if(!topic) return;
 
@@ -25,7 +25,7 @@
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({
-        mode: "full_lesson",
+        mode: "full_Exercise",
         topic: topic,
         level: level
       })
@@ -57,7 +57,7 @@
       });
     });
 
-    alert("Full lesson generated!");
+    alert("Full Exercise generated!");
 
   }catch(err){
     console.error(err);
@@ -318,7 +318,7 @@ video, iframe, #player, #builderPlayer{width:100%;height:400px;max-width:100%;di
 </style>
 
 <div class="container">
-  <h1>Create a Lesson</h1>
+  <h1>Create a Exercise</h1>
   <div class="sub">Upload audio or paste a link. We’ll prepare everything for you.</div>
 
   <!-- Upload -->
@@ -345,7 +345,7 @@ video, iframe, #player, #builderPlayer{width:100%;height:400px;max-width:100%;di
   </div>
 
   <!-- Generate -->
-  <button id="generateBtn">Generate Lesson</button>
+  <button id="generateBtn">Generate Exercise</button>
   <div class="status" id="status"></div>
 </div>
 
@@ -449,7 +449,7 @@ async function handleFile(file) {
   }
 }
 
-// Generate lesson
+// Generate Exercise
 generateBtn.onclick = async () => {
   const text = document.getElementById("transcript").value;
 
@@ -459,7 +459,7 @@ generateBtn.onclick = async () => {
   }
 
   generateBtn.disabled = true;
-  status.innerText = "Creating your lesson...";
+  status.innerText = "Creating your Exercise...";
 
   try {
     const res = await fetch("https://gapfill-ai.williamspowerlifting.workers.dev/generate-gaps", {
@@ -479,7 +479,7 @@ generateBtn.onclick = async () => {
         data.sections.map(s => s.text).join("\\n\\n");
     }
 
-    status.innerText = "Lesson ready ✓";
+    status.innerText = "Exercise ready ✓";
   } catch (err) {
     console.error(err);
     status.innerText = "Something went wrong";
