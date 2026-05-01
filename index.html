@@ -324,10 +324,11 @@ video, iframe, #player, #builderPlayer{width:100%;height:400px;max-width:100%;di
   <!-- Upload -->
   <div class="card">
     <div class="dropzone" id="dropzone">
-      <strong>Upload your audio</strong><br>
-      Click or drag your file here
+      <strong>Upload your video</strong>
+      Click or drag your video here
+<div class="hint">MP4, MOV, MKV supported</div>
     </div>
-    <input type="file" id="fileInput" accept="audio/*">
+    <input type="file" id="fileInput" accept="video/*,.mp4,.mov,.mkv,.webm">
     <div class="status" id="uploadStatus"></div>
   </div>
 
@@ -381,14 +382,71 @@ fileInput.onchange = () => {
 
 // TEMP file handler (we connect real transcription next)
 async function handleFile(file) {
-  uploadStatus.innerText = "Uploading and transcribing...";
+  uploadStatus.innerText = "Uploading video...";
 
-  await new Promise(r => setTimeout(r, 1500));
+  try {
+    // 1. Upload to Bunny
+    const uploadRes = await fetch(
+      `https://video.bunnycdn.com/library/YOUR_LIBRARY_ID/videos`,
+      {
+        method: "POST",
+        headers: {
+          "AccessKey": "15f2441d-6e94-4116-a6d530cf3d1b-5d71-407f",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          title: file.name
+        })
+      }
+    );
 
-  uploadStatus.innerText = "Transcription complete ✓";
+    const uploadData = await uploadRes.json();
+    const videoId = uploadData.guid;
 
-  document.getElementById("transcript").value =
-    "This is an example transcript. Replace with real transcription.";
+    // 2. Upload file binary
+    await fetch(
+      `https://video.bunnycdn.com/library/YOUR_LIBRARY_ID/videos/${videoId}`,
+      {
+        method: "PUT",
+        headers: {
+          "AccessKey": "15f2441d-6e94-4116-a6d530cf3d1b-5d71-407f",
+          "Content-Type": "application/octet-stream"
+        },
+        body: file
+      }
+    );
+
+    uploadStatus.innerText = "Processing video...";
+
+    // 3. Construct playback URL
+    const videoUrl = `https://iframe.mediadelivery.net/play/YOUR_LIBRARY_ID/${videoId}`;
+
+    // 4. Send to YOUR WORKER for transcription
+    const res = await fetch("https://gapfill-ai.williamspowerlifting.workers.dev/transcribe", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        audioUrl: videoUrl
+      })
+    });
+
+    const data = await res.json();
+
+    if (!data || !data.text) {
+      throw new Error("Transcription failed");
+    }
+
+    // 5. Fill textarea
+    document.getElementById("transcript").value = data.text;
+
+    uploadStatus.innerText = "Transcript ready ✓";
+
+  } catch (err) {
+    console.error(err);
+    uploadStatus.innerText = "Upload failed";
+  }
 }
 
 // Generate lesson
