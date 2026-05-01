@@ -229,955 +229,206 @@ video, iframe, #player, #builderPlayer{width:100%;height:400px;max-width:100%;di
 </head>
 
 <body>
-<div class="container" id="app"></div>
-  <button class="help-fab" onclick="document.getElementById('helpOverlay').classList.add('show')" title="Help">❓</button>
+<body>
 
-<div class="help-overlay" id="helpOverlay" onclick="if(event.target===this)this.classList.remove('show')">
-  <div class="help-modal">
-    <button class="help-close" onclick="document.getElementById('helpOverlay').classList.remove('show')">×</button>
+<style>
+  body {
+    font-family: Inter, system-ui, sans-serif;
+    background: #f5f6f8;
+    margin: 0;
+    padding: 40px;
+    color: #111;
+  }
 
-    <h2>📖 How to Use the Listening Exercise Builder</h2>
-    <p>Create gap-fill listening exercises from any video and share them with your students with a single link.</p>
+  .container {
+    max-width: 720px;
+    margin: auto;
+  }
 
-    <h3>🎬 Step 1 — Add Your Video</h3>
-    <p>Choose one of the three options at the top:</p>
-    <ul>
-      <li><b>🔗 Video Link</b> — Paste a YouTube URL or direct .mp4 link.</li>
-      <li><b>📁 Local File</b> — Pick a video from your computer (preview only — students won't see it).</li>
-      <li><b>☁️ Cloud Upload</b> — Upload your video to be hosted automatically. <b>Use this if you want to share with students.</b> Supports .mp4, .mov, .avi, .mkv, .webm.</li>
-    </ul>
-    <div class="tip">💡 <b>Tip:</b> Cloud Upload takes 1–3 minutes to convert. You'll see a green ✅ when ready.</div>
+  h1 {
+    font-size: 30px;
+    margin-bottom: 8px;
+  }
 
-    <h3>📝 Step 2 — Generate a Transcript (Optional)</h3>
-    <p>This helps you find the exact times for sections without scrubbing through the video.</p>
-    <ol>
-      <li>Pick a transcript engine (🤖 Auto picks the best for you).</li>
-      <li>Click <b>✨ Generate Transcript</b>.</li>
-      <li>Wait for the transcript to appear with timestamps.</li>
-      <li>Click any timestamp to jump the video to that point.</li>
-    </ol>
+  .sub {
+    color: #666;
+    margin-bottom: 30px;
+  }
 
-    <h3>✏️ Step 3 — Build Sections</h3>
-    <p>Each section is one play-and-fill task for your students.</p>
-    <ol>
-      <li>Click <b>+ Add Section</b>.</li>
-      <li>Type the sentence(s) in the text box. Use <code>_</code> (underscore) to mark each gap.<br>
-        Example: <code>Today the weather is _ and a bit _.</code></li>
-      <li>Type the answers, comma-separated. Example: <code>sunny,cold</code></li>
-      <li>Set the start/end times for the audio segment:
-        <ul>
-          <li>From the video — pause and click <b>Set Start</b> / <b>Set End</b></li>
-          <li>From the transcript — click <b>→ Start</b> or <b>→ End</b> on any line</li>
-        </ul>
-      </li>
-    </ol>
-    <div class="tip">💡 The number of <code>_</code> gaps must match the number of answers — a warning shows if they don't.</div>
+  .card {
+    background: white;
+    border-radius: 18px;
+    padding: 22px;
+    margin-bottom: 18px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  }
 
-    <h3>👀 Step 4 — Preview & Test</h3>
-    <ul>
-      <li><b>Preview</b> — See the student view before sharing.</li>
-      <li><b>✨ Toggle Gap Highlight</b> — Highlights gaps in your text for visual checking.</li>
-      <li>From preview, click <b>Play Section 1, 2…</b> to test the timing.</li>
-    </ul>
+  .dropzone {
+    border: 2px dashed #d0d5dd;
+    border-radius: 14px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+  }
 
-    <h3>🔗 Step 5 — Share with Students</h3>
-    <ol>
-      <li>Click <b>Generate Link</b>.</li>
-      <li>Copy the link that appears.</li>
-      <li>Send it to students via email, chat, or LMS.</li>
-      <li>Students open the link and complete the exercise — no signup needed.</li>
-    </ol>
-    <div class="danger">⚠️ <b>Important:</b> "Generate Link" only works with YouTube, MP4 links, or Cloud Upload. Local Files cannot be shared.</div>
+  .dropzone:hover {
+    border-color: #111;
+    background: #fafafa;
+  }
 
-    <h3>💾 Saving & Reopening Exercises</h3>
-    <ul>
-      <li><b>💾 Save Exercise</b> — Downloads a <code>.json</code> file you can keep on your computer.</li>
-      <li><b>📂 Load Exercise</b> — Reopen a saved <code>.json</code> file later to edit it.</li>
-    </ul>
+  input[type="file"] {
+    display: none;
+  }
 
-    <h3>🧑‍🎓 What Students See</h3>
-    <ol>
-      <li>The video appears at the top.</li>
-      <li>They click <b>Play Section 1</b>, <b>Play Section 2</b>, etc.</li>
-      <li>They type answers in the gaps.</li>
-      <li>They click <b>Check Answers</b> — green = correct, red = wrong.</li>
-      <li>After checking, they can click <b>Reveal Answers</b> to see the right ones.</li>
-      <li><b>Repeat Section</b> replays the current segment.</li>
-    </ol>
+  input, textarea {
+    width: 100%;
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    font-size: 14px;
+  }
 
-    <h3>🎙️ Transcript Engine Comparison</h3>
-    <ul>
-      <li><b>🐰 Bunny Captions</b> — Best for Cloud Upload videos. Auto-generated, very accurate.</li>
-      <li><b>🎯 AssemblyAI</b> — Best for YouTube/MP4 links. ~95% accuracy.</li>
-      <li><b>🌐 Browser Speech</b> — Free fallback. Less accurate. Records via microphone while you play the video aloud.</li>
-    </ul>
+  textarea {
+    height: 220px;
+    resize: vertical;
+  }
 
-    <h3>📱 Mobile Support</h3>
-    <p>The app works on phones and tablets. Students can complete exercises from any device with a browser.</p>
+  button {
+    width: 100%;
+    padding: 15px;
+    border-radius: 14px;
+    border: none;
+    background: #111;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+  }
 
-    <h3>❓ Troubleshooting</h3>
-    <ul>
-      <li><b>Video won't play after upload</b> — Wait 1–3 minutes for Cloud processing, then refresh.</li>
-      <li><b>".mov won't play locally"</b> — Use Cloud Upload instead.</li>
-      <li><b>Transcript is empty</b> — Try a different engine or wait longer for Bunny captions.</li>
-      <li><b>Generated link is too long</b> — Keep section text short, or use a link shortener.</li>
-    </ul>
+  button:disabled {
+    background: #999;
+    cursor: not-allowed;
+  }
 
-    <p style="text-align:center;margin-top:24px;color:#6b7280;font-size:13px;">
-      Built with ❤️ for ESL teachers everywhere
-    </p>
+  .status {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #555;
+  }
+</style>
+
+<div class="container">
+  <h1>Create a Lesson</h1>
+  <div class="sub">Upload audio or paste a link. We’ll prepare everything for you.</div>
+
+  <!-- Upload -->
+  <div class="card">
+    <div class="dropzone" id="dropzone">
+      <strong>Upload your audio</strong><br>
+      Click or drag your file here
+    </div>
+    <input type="file" id="fileInput" accept="audio/*">
+    <div class="status" id="uploadStatus"></div>
   </div>
+
+  <!-- URL -->
+  <div class="card">
+    <label>Or paste a link</label>
+    <input type="text" id="audioUrl" placeholder="https://...">
+  </div>
+
+  <!-- Transcript -->
+  <div class="card">
+    <label>Text (you can edit this)</label>
+    <textarea id="transcript" placeholder="Your text will appear here..."></textarea>
+  </div>
+
+  <!-- Generate -->
+  <button id="generateBtn">Generate Lesson</button>
+  <div class="status" id="status"></div>
 </div>
 
 <script>
-const app=document.getElementById("app");
-let builderPlayer=null, ytPlayer=null, ytReady=false;
-let lessonCache=null, currentSection=0, stopTimer=null;
-let answersMap={}, highlightMode=false;
-let hasChecked=false;
-let uploadedVideoURL=null, uploadedVideoName=null, uploadedVideoFile=null;
-let bunnyVideoId=null, bunnyEmbedUrl=null, bunnyDirectUrl=null;
-let videoSourceMode="url";
-let transcriptData=[], recognition=null, isRecording=false;
-let transcriptEngine="auto";
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
+const uploadStatus = document.getElementById("uploadStatus");
+const status = document.getElementById("status");
+const generateBtn = document.getElementById("generateBtn");
 
-function isBunnyConfigured(){
-  const c=window.BUNNY_CONFIG||{};
-  return c.LIBRARY_ID && c.API_KEY && c.CDN_HOST &&
-    !c.API_KEY.includes("PASTE_") && !c.API_KEY.includes("YOUR_");
+// Click to upload
+dropzone.onclick = () => fileInput.click();
+
+// Drag styling
+dropzone.ondragover = (e) => {
+  e.preventDefault();
+  dropzone.style.borderColor = "#111";
+};
+
+dropzone.ondragleave = () => {
+  dropzone.style.borderColor = "#d0d5dd";
+};
+
+// Drop file
+dropzone.ondrop = (e) => {
+  e.preventDefault();
+  fileInput.files = e.dataTransfer.files;
+  handleFile(fileInput.files[0]);
+};
+
+fileInput.onchange = () => {
+  handleFile(fileInput.files[0]);
+};
+
+// TEMP file handler (we connect real transcription next)
+async function handleFile(file) {
+  uploadStatus.innerText = "Uploading and transcribing...";
+
+  await new Promise(r => setTimeout(r, 1500));
+
+  uploadStatus.innerText = "Transcription complete ✓";
+
+  document.getElementById("transcript").value =
+    "This is an example transcript. Replace with real transcription.";
 }
 
-function isAssemblyConfigured(){
-  const c=window.ASSEMBLYAI_CONFIG||{};
-  return c.API_KEY && !c.API_KEY.includes("PASTE_") && !c.API_KEY.includes("YOUR_");
-}
+// Generate lesson
+generateBtn.onclick = async () => {
+  const text = document.getElementById("transcript").value;
 
-function getDriveVideoUrl(url){
-  const match=url.match(/\/d\/([^\/]+)/);
-  return match?"https://drive.google.com/uc?export=download&id="+match[1]:url;
-}
-
-function loadYT(cb){
-  if(window.YT && YT.Player){ cb(); }
-  else{
-    const tag=document.createElement("script");
-    tag.src="https://www.youtube.com/iframe_api";
-    document.body.appendChild(tag);
-    window.onYouTubeIframeAPIReady=cb;
-  }
-}
-
-function getYTid(url){
-  const m=url.match(/(?:v=|youtu\.be\/|embed\/)([^&?]+)/);
-  return m?m[1]:null;
-}
-
-const params=new URLSearchParams(location.search);
-const raw=params.get("data");
-if(raw){
-  try{ loadStudent(JSON.parse(decodeURIComponent(raw)),false); }
-  catch(e){ app.innerHTML='<div class="config-warning">Invalid lesson link.</div>'; }
-} else { loadBuilder(); }
-
-function loadBuilder(saved){
-  lessonCache=saved||null;
-  const cfgWarning=!isBunnyConfigured()
-    ? '<div class="config-warning">Cloud upload not configured. Edit the BUNNY_CONFIG values at the top of this HTML file.</div>'
-    : '';
-
-  app.innerHTML=
-    '<h2>🎧 Exercise Builder</h2>'+
-    cfgWarning+
-    '<div style="background:#fef3c7;padding:10px;border-radius:8px;margin-bottom:12px;font-size:14px;">'+
-      '<b>Supported video sources:</b><br>'+
-      '• 🔗 YouTube links<br>'+
-      '• 🔗 Direct .mp4 video links<br>'+
-      '• 📁 Local file (.mp4, .webm, .mov*) — preview only<br>'+
-      '• ☁️ <b>Cloud upload (.mp4, .mov, .avi, .mkv, .webm) — auto-converted & shareable!</b><br>'+
-      '<small>*.mov works in Chrome/Edge/Safari but not Firefox locally — use Cloud Upload for guaranteed compatibility.</small>'+
-    '</div>'+
-    '<div class="source-toggle">'+
-      '<button id="srcUrlBtn" onclick="setSourceMode(\'url\')">🔗 Video Link</button>'+
-      '<button id="srcUploadBtn" onclick="setSourceMode(\'upload\')">📁 Local File</button>'+
-      '<button id="srcBunnyBtn" onclick="setSourceMode(\'bunny\')">☁️ Cloud Upload</button>'+
-    '</div>'+
-    '<div id="srcUrlBox">'+
-      '<div class="field-instruction">Enter a YouTube or MP4 video link.</div>'+
-      '<input id="videoUrl">'+
-    '</div>'+
-    '<div id="srcUploadBox" style="display:none;">'+
-      '<div class="field-instruction">Choose a video file (.mp4, .webm, .mov). Preview only.</div>'+
-      '<input type="file" id="videoFile" accept="video/*,.mov,.mp4,.webm,.mkv,.avi" onchange="handleVideoUpload(event)">'+
-      '<div id="uploadInfo" class="upload-info" style="display:none;"></div>'+
-    '</div>'+
-    '<div id="srcBunnyBox" style="display:none;">'+
-      '<div class="field-instruction">Upload any video format — auto-converted and shareable with students.</div>'+
-      '<input type="file" id="bunnyFile" accept="video/*,.mov,.mp4,.webm,.mkv,.avi" onchange="handleBunnyUpload(event)">'+
-      '<div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar">0%</div></div>'+
-      '<div class="upload-status" id="cloudStatus"></div>'+
-    '</div>'+
-    '<div id="builderVideo"></div>'+
-    '<div class="transcript-panel">'+
-      '<h3>📝 Transcript Generator</h3>'+
-      '<div class="field-instruction" style="margin-top:0;">Generate timestamps to quickly find moments. Use the → Start / → End buttons to set section times.</div>'+
-      '<div class="engine-select">'+
-        '<span style="font-size:12px;color:#6b7280;align-self:center;margin-right:4px;">Engine:</span>'+
-        '<button id="engAuto" class="active" onclick="setEngine(\'auto\')">🤖 Auto (best available)</button>'+
-        '<button id="engBunny" onclick="setEngine(\'bunny\')">🐰 Bunny Captions</button>'+
-        '<button id="engAssembly" onclick="setEngine(\'assembly\')">🎯 AssemblyAI</button>'+
-        '<button id="engBrowser" onclick="setEngine(\'browser\')">🌐 Browser (free)</button>'+
-      '</div>'+
-      '<div class="transcript-controls">'+
-        '<button id="genBtn" onclick="generateTranscript()">✨ Generate Transcript</button>'+
-        '<button id="recBtn" onclick="toggleRecording()" style="display:none;">🎙️ Start Live Transcribe</button>'+
-        '<button onclick="addManualStamp()">⏱️ Add Manual Timestamp</button>'+
-        '<button onclick="clearTranscript()">🗑️ Clear</button>'+
-        '<button onclick="exportTranscript()">⬇️ Export .txt</button>'+
-      '</div>'+
-      '<div class="transcript-status" id="transcriptStatus"></div>'+
-      '<div class="transcript-output" id="transcriptOutput"><i style="color:#9ca3af;">No transcript yet.</i></div>'+
-    '</div>'+
-    '<button onclick="toggleHighlight()">✨ Toggle Gap Highlight</button>'+
-    '<div id="sections"></div>'+
-    '<button onclick="addSection()">+ Add Section</button>'+
-    '<button onclick="preview()">Preview</button>'+
-    '<button onclick="generate()">Generate Link</button>'+
-    '<button onclick="generateFullLessonAI()">🤖 Generate Full Lesson</button>'+
-    '<button onclick="saveExercise()">💾 Save Exercise</button>'+
-    '<input type="file" id="loadExerciseFile" style="display:none" onchange="loadExerciseFile(event)">'+
-    '<button onclick="document.getElementById(\'loadExerciseFile\').click()">📂 Load Exercise</button>'+
-    '<p id="link"></p>';
-
-  document.getElementById("videoUrl").addEventListener("change",loadVideo);
-  updateEngineUI();
-
-  if(saved){
-    if(saved.bunnyVideoId){
-      bunnyVideoId=saved.bunnyVideoId;
-      bunnyEmbedUrl=saved.bunnyEmbedUrl;
-      bunnyDirectUrl=saved.bunnyDirectUrl;
-      setSourceMode("bunny");
-      document.getElementById("cloudStatus").innerHTML='<span class="upload-success">☁️ Hosted video ready (ID: '+bunnyVideoId+')</span>';
-      renderBunnyVideo();
-    } else if(saved.videoUrl){
-      setSourceMode("url");
-      document.getElementById("videoUrl").value=saved.videoUrl;
-      loadVideo();
-    } else { setSourceMode("url"); }
-    (saved.sections||[]).forEach(s=>addSection(s));
-    if(saved.transcript){ transcriptData=saved.transcript; renderTranscript(); }
-  } else {
-    setSourceMode("url");
-    addSection();
-  }
-}
-
-function setEngine(e){
-  transcriptEngine=e;
-  ["Auto","Bunny","Assembly","Browser"].forEach(name=>{
-    const btn=document.getElementById("eng"+name);
-    if(btn) btn.classList.toggle("active",e===name.toLowerCase());
-  });
-  updateEngineUI();
-}
-
-function updateEngineUI(){
-  const recBtn=document.getElementById("recBtn");
-  const genBtn=document.getElementById("genBtn");
-  const eng=resolveEngine();
-  if(!recBtn||!genBtn) return;
-  if(eng==="browser"){
-    recBtn.style.display="inline-block";
-    genBtn.style.display="none";
-  } else {
-    recBtn.style.display="none";
-    genBtn.style.display="inline-block";
-  }
-  const labels={bunny:"Bunny Captions",assembly:"AssemblyAI",browser:"Browser Speech"};
-  document.getElementById("transcriptStatus").innerText="Active engine: "+(labels[eng]||eng);
-}
-
-function resolveEngine(){
-  if(transcriptEngine==="auto"){
-    if(videoSourceMode==="bunny" && bunnyVideoId && isBunnyConfigured()) return "bunny";
-    if(isAssemblyConfigured()) return "assembly";
-    return "browser";
-  }
-  return transcriptEngine;
-}
-
-function setSourceMode(mode){
-  videoSourceMode=mode;
-  ["Url","Upload","Bunny"].forEach(m=>{
-    const btn=document.getElementById("src"+m+"Btn");
-    const box=document.getElementById("src"+m+"Box");
-    if(btn) btn.classList.toggle("active",mode===m.toLowerCase());
-    if(box) box.style.display=mode===m.toLowerCase()?"block":"none";
-  });
-  updateEngineUI();
-}
-
-function handleVideoUpload(event){
-  const file=event.target.files[0];
-  if(!file) return;
-  if(uploadedVideoURL) URL.revokeObjectURL(uploadedVideoURL);
-  uploadedVideoURL=URL.createObjectURL(file);
-  uploadedVideoName=file.name;
-  uploadedVideoFile=file;
-  const info=document.getElementById("uploadInfo");
-  info.style.display="block";
-  const isMov=/\.mov$/i.test(file.name);
-  const movNote=isMov?'<br><small>📱 .mov detected — if it doesn\'t play, use Cloud Upload instead.</small>':'';
-  info.innerHTML='✅ Loaded: <b>'+file.name+'</b> ('+(file.size/1024/1024).toFixed(1)+' MB) — preview only.'+movNote;
-  const box=document.getElementById("builderVideo");
-  const mime=file.type||(isMov?"video/quicktime":"video/mp4");
-  box.innerHTML='<video id="builderPlayer" controls><source src="'+uploadedVideoURL+'" type="'+mime+'"></video>';
-  builderPlayer=document.getElementById("builderPlayer");
-  builderPlayer.addEventListener("error",()=>{
-    info.innerHTML+='<br><span style="color:#991b1b;">⚠️ This file can\'t play in your browser. Try Cloud Upload — Bunny will convert it automatically.</span>';
-  });
-  ytReady=true;
-  ytPlayer=null;
-}
-
-async function handleBunnyUpload(event){
-  const file=event.target.files[0];
-  if(!file) return;
-  if(!isBunnyConfigured()){ alert("Cloud upload is not configured."); return; }
-
-  const cfg=window.BUNNY_CONFIG;
-  const status=document.getElementById("cloudStatus");
-  const progressWrap=document.getElementById("progressWrap");
-  const progressBar=document.getElementById("progressBar");
-  progressWrap.style.display="block";
-  progressBar.style.width="0%";
-  progressBar.innerText="0%";
-  status.innerHTML="⏳ Creating video entry...";
-
-  try{
-    const createRes=await fetch("https://video.bunnycdn.com/library/"+cfg.LIBRARY_ID+"/videos",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","AccessKey":cfg.API_KEY},
-      body:JSON.stringify({title:file.name})
-    });
-    if(!createRes.ok) throw new Error("Failed to create video entry: "+createRes.status);
-    const created=await createRes.json();
-    const guid=created.guid;
-    status.innerHTML='⏳ Uploading "'+file.name+'"...';
-
-    await new Promise((resolve,reject)=>{
-      const xhr=new XMLHttpRequest();
-      xhr.open("PUT","https://video.bunnycdn.com/library/"+cfg.LIBRARY_ID+"/videos/"+guid);
-      xhr.setRequestHeader("AccessKey",cfg.API_KEY);
-      xhr.upload.onprogress=(e)=>{
-        if(e.lengthComputable){
-          const pct=Math.round((e.loaded/e.total)*100);
-          progressBar.style.width=pct+"%";
-          progressBar.innerText=pct+"%";
-        }
-      };
-      xhr.onload=()=>{
-        if(xhr.status>=200 && xhr.status<300) resolve();
-        else reject(new Error("Upload failed: "+xhr.status));
-      };
-      xhr.onerror=()=>reject(new Error("Network error"));
-      xhr.send(file);
-    });
-
-    bunnyVideoId=guid;
-    bunnyEmbedUrl="https://iframe.mediadelivery.net/embed/"+cfg.LIBRARY_ID+"/"+guid;
-    bunnyDirectUrl="https://"+cfg.CDN_HOST+"/"+guid+"/play_720p.mp4";
-    status.innerHTML='<span class="upload-success">✅ Uploaded! Bunny is converting and auto-transcribing — usually ready in 1-3 minutes.</span>';
-    progressBar.style.width="100%";
-    progressBar.innerText="Done";
-    renderBunnyVideo();
-    updateEngineUI();
-  }catch(err){
-    console.error(err);
-    status.innerHTML='<span class="upload-error">❌ '+err.message+'</span>';
-    progressWrap.style.display="none";
-  }
-}
-
-function renderBunnyVideo(){
-  const box=document.getElementById("builderVideo");
-  box.innerHTML='<iframe id="builderPlayer" src="'+bunnyEmbedUrl+'?autoplay=false" loading="lazy" allowfullscreen allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture;" style="border:none;"></iframe>';
-  ytPlayer=null;
-  ytReady=false;
-  setTimeout(tryDirectVideo,2000);
-}
-
-async function tryDirectVideo(){
-  if(!bunnyDirectUrl) return;
-  try{
-    const head=await fetch(bunnyDirectUrl,{method:"HEAD"});
-    if(head.ok){
-      const box=document.getElementById("builderVideo");
-      box.innerHTML='<video id="builderPlayer" controls crossorigin="anonymous"><source src="'+bunnyDirectUrl+'" type="video/mp4"></video>';
-      builderPlayer=document.getElementById("builderPlayer");
-      ytReady=true;
-    } else { setTimeout(tryDirectVideo,5000); }
-  }catch(e){ setTimeout(tryDirectVideo,5000); }
-}
-
-function toggleHighlight(){
-  highlightMode=!highlightMode;
-  document.querySelectorAll(".gap-preview").forEach(p=>{
-    p.style.display=highlightMode?"block":"none";
-  });
-  updateAllValidation();
-}
-
-function loadVideo(){
-  let url=document.getElementById("videoUrl").value;
-  url=getDriveVideoUrl(url);
-  const box=document.getElementById("builderVideo");
-  ytReady=false;
-  if(url.includes("youtube")){
-    box.innerHTML='<div id="builderPlayer"></div>';
-    loadYT(()=>builderPlayer=new YT.Player("builderPlayer",{videoId:getYTid(url),events:{onReady:()=>ytReady=true}}));
-  } else {
-    box.innerHTML='<video id="builderPlayer" controls><source src="'+url+'"></video>';
-    builderPlayer=document.getElementById("builderPlayer");
-    ytReady=true;
-  }
-}
-
-function getTime(){
-  if(!builderPlayer||!ytReady) return 0;
-  return builderPlayer.currentTime!==undefined ? builderPlayer.currentTime : (builderPlayer.getCurrentTime?builderPlayer.getCurrentTime():0);
-}
-
-function seekTo(time){
-  if(!builderPlayer||!ytReady) return;
-  if(typeof builderPlayer.seekTo==="function"){
-    builderPlayer.seekTo(time,true);
-    if(builderPlayer.playVideo) builderPlayer.playVideo();
-  } else if(builderPlayer.currentTime!==undefined){
-    builderPlayer.currentTime=time;
-    builderPlayer.play();
-  }
-}
-
-function formatTime(sec){
-  sec=Math.floor(sec);
-  const m=Math.floor(sec/60), s=sec%60;
-  return m+":"+(s<10?"0":"")+s;
-}
-/* ============ TRANSCRIPT ENGINES ============ */
-
-async function generateTranscript(){
-  const eng=resolveEngine();
-  const status=document.getElementById("transcriptStatus");
-  if(eng==="bunny") return generateBunnyTranscript();
-  if(eng==="assembly") return generateAssemblyTranscript();
-  status.innerText="❌ Click '🎙️ Start Live Transcribe' for browser engine.";
-}
-
-async function generateBunnyTranscript(){
-  const status=document.getElementById("transcriptStatus");
-  if(!bunnyVideoId){ alert("Upload a video via Cloud Upload first."); return; }
-  if(!isBunnyConfigured()){ alert("Bunny not configured."); return; }
-  const cfg=window.BUNNY_CONFIG;
-  status.innerText="⏳ Fetching Bunny captions...";
-
-  try{
-    const url="https://video.bunnycdn.com/library/"+cfg.LIBRARY_ID+"/videos/"+bunnyVideoId;
-    const res=await fetch(url,{headers:{"AccessKey":cfg.API_KEY}});
-    if(!res.ok) throw new Error("Could not fetch video info");
-    const info=await res.json();
-
-    if(!info.captions || info.captions.length===0){
-      status.innerText="⏳ No captions yet. Requesting transcription...";
-      const transRes=await fetch(url+"/transcribe?language=en&force=true",{
-        method:"POST",
-        headers:{"AccessKey":cfg.API_KEY}
-      });
-      if(!transRes.ok){
-        status.innerHTML='<span class="upload-error">Bunny returned '+transRes.status+'. Make sure transcription is enabled in your Bunny library Settings.</span>';
-        return;
-      }
-      status.innerText="⏳ Transcription started — usually takes 1-3 min. Wait, then click Generate Transcript again.";
-      return;
-    }
-
-    const cap=info.captions[0];
-    const captionUrl="https://"+cfg.CDN_HOST+"/"+bunnyVideoId+"/captions/"+cap.srclang+".vtt";
-    const vttRes=await fetch(captionUrl);
-    if(!vttRes.ok) throw new Error("Could not load caption file");
-    const vttText=await vttRes.text();
-
-    transcriptData=parseVTT(vttText);
-    renderTranscript();
-    status.innerText="✅ Loaded "+transcriptData.length+" caption segments from Bunny.";
-  }catch(err){
-    console.error(err);
-    status.innerHTML='<span class="upload-error">❌ '+err.message+'</span>';
-  }
-}
-
-function parseVTT(text){
-  const lines=text.split(/\r?\n/);
-  const out=[];
-  let i=0;
-  while(i<lines.length){
-    const line=lines[i].trim();
-    const m=line.match(/^(\d{1,2}):(\d{2}):(\d{2})[\.,](\d{3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[\.,](\d{3})/);
-    if(m){
-      const start=(+m[1])*3600+(+m[2])*60+(+m[3])+(+m[4])/1000;
-      i++;
-      let textLines=[];
-      while(i<lines.length && lines[i].trim()!==""){
-        textLines.push(lines[i].trim());
-        i++;
-      }
-      const segText=textLines.join(" ").replace(/<[^>]+>/g,"").trim();
-      if(segText) out.push({time:start,text:segText});
-    }
-    i++;
-  }
-  return out;
-}
-
-async function generateAssemblyTranscript(){
-  const status=document.getElementById("transcriptStatus");
-  if(!isAssemblyConfigured()){ alert("AssemblyAI not configured. Add your API key."); return; }
-
-  let audioUrl=null;
-  if(videoSourceMode==="bunny" && bunnyDirectUrl){
-    audioUrl=bunnyDirectUrl;
-  } else if(videoSourceMode==="url"){
-    const u=document.getElementById("videoUrl").value;
-    if(u.includes("youtube")){ alert("AssemblyAI can't transcribe YouTube directly. Upload via Cloud Upload, or use Browser engine."); return; }
-    audioUrl=u;
-  } else if(videoSourceMode==="upload" && uploadedVideoFile){
-    status.innerText="⏳ Uploading file to AssemblyAI...";
-    audioUrl=await assemblyUploadFile(uploadedVideoFile);
-  }
-  if(!audioUrl){ alert("No video available."); return; }
-
-  status.innerText="⏳ Submitting to AssemblyAI...";
-  try{
-    const submit=await fetch("https://api.assemblyai.com/v2/transcript",{
-      method:"POST",
-      headers:{"Authorization":window.ASSEMBLYAI_CONFIG.API_KEY,"Content-Type":"application/json"},
-      body:JSON.stringify({audio_url:audioUrl,punctuate:true,format_text:true,speech_models:["universal-2"]})
-    });
-    const job=await submit.json();
-    if(!job.id) throw new Error(job.error||"Submission failed");
-
-    status.innerText="⏳ Transcribing (~30s for short videos)...";
-    let result=null;
-    for(let attempt=0;attempt<60;attempt++){
-      await new Promise(r=>setTimeout(r,3000));
-      const poll=await fetch("https://api.assemblyai.com/v2/transcript/"+job.id,{
-        headers:{"Authorization":window.ASSEMBLYAI_CONFIG.API_KEY}
-      });
-      result=await poll.json();
-      if(result.status==="completed") break;
-      if(result.status==="error") throw new Error(result.error);
-      status.innerText="⏳ Transcribing... ("+(attempt*3)+"s elapsed)";
-    }
-    if(!result || result.status!=="completed") throw new Error("Timed out");
-
-    transcriptData=[];
-    if(result.utterances && result.utterances.length){
-      result.utterances.forEach(u=>transcriptData.push({time:u.start/1000,text:u.text}));
-    } else if(result.words && result.words.length){
-      const words=result.words;
-      let chunk=[],startT=words[0].start/1000;
-      words.forEach((w,idx)=>{
-        chunk.push(w.text);
-        if(chunk.length>=10 || idx===words.length-1){
-          transcriptData.push({time:startT,text:chunk.join(" ")});
-          chunk=[];
-          if(idx<words.length-1) startT=words[idx+1].start/1000;
-        }
-      });
-    } else {
-      transcriptData=[{time:0,text:result.text||"(no text)"}];
-    }
-    renderTranscript();
-    status.innerText="✅ AssemblyAI transcript ready ("+transcriptData.length+" segments).";
-  }catch(err){
-    console.error(err);
-    status.innerHTML='<span class="upload-error">❌ '+err.message+'</span>';
-  }
-}
-
-async function assemblyUploadFile(file){
-  const res=await fetch("https://api.assemblyai.com/v2/upload",{
-    method:"POST",
-    headers:{"Authorization":window.ASSEMBLYAI_CONFIG.API_KEY},
-    body:file
-  });
-  const data=await res.json();
-  if(!data.upload_url) throw new Error("Upload to AssemblyAI failed");
-  return data.upload_url;
-}
-
-function toggleRecording(){
-  if(isRecording){ stopRecording(); }else{ startRecording(); }
-}
-
-function startRecording(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){ alert("Speech recognition not supported. Use Chrome/Edge."); return; }
-  if(!builderPlayer){ alert("Please load a video first."); return; }
-  recognition=new SR();
-  recognition.continuous=true;
-  recognition.interimResults=false;
-  recognition.lang="en-US";
-  recognition.onresult=(event)=>{
-    for(let i=event.resultIndex;i<event.results.length;i++){
-      if(event.results[i].isFinal){
-        const text=event.results[i][0].transcript.trim();
-        const t=getTime();
-        transcriptData.push({time:t,text:text});
-        renderTranscript();
-      }
-    }
-  };
-  recognition.onerror=(e)=>{ document.getElementById("transcriptStatus").innerText="⚠️ "+e.error; };
-  recognition.onend=()=>{ if(isRecording){ try{ recognition.start(); }catch(e){} } };
-  try{
-    recognition.start();
-    isRecording=true;
-    const btn=document.getElementById("recBtn");
-    btn.innerHTML='<span class="recording-dot"></span>Stop Live Transcribe';
-    btn.style.background="#dc2626";
-    document.getElementById("transcriptStatus").innerText="🔴 Recording... play the video aloud.";
-  }catch(err){ alert("Could not start: "+err.message); }
-}
-
-function stopRecording(){
-  isRecording=false;
-  if(recognition){ try{ recognition.stop(); }catch(e){} }
-  const btn=document.getElementById("recBtn");
-  btn.innerHTML="🎙️ Start Live Transcribe";
-  btn.style.background="#4f46e5";
-  document.getElementById("transcriptStatus").innerText="✅ Stopped.";
-}
-
-function addManualStamp(){
-  if(!builderPlayer){ alert("Load a video first."); return; }
-  const t=getTime();
-  const note=prompt("Add a label for timestamp "+formatTime(t)+":","");
-  if(note===null) return;
-  transcriptData.push({time:t,text:note||"(marker)"});
-  transcriptData.sort((a,b)=>a.time-b.time);
-  renderTranscript();
-}
-
-function clearTranscript(){
-  if(transcriptData.length && !confirm("Clear all transcript entries?")) return;
-  transcriptData=[];
-  renderTranscript();
-}
-
-function exportTranscript(){
-  if(!transcriptData.length){ alert("No transcript to export."); return; }
-  const txt=transcriptData.map(t=>"["+formatTime(t.time)+"] "+t.text).join("\n");
-  const blob=new Blob([txt],{type:"text/plain"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url; a.download="transcript.txt"; a.click();
-  URL.revokeObjectURL(url);
-}
-
-function renderTranscript(){
-  const out=document.getElementById("transcriptOutput");
-  if(!out) return;
-  if(!transcriptData.length){
-    out.innerHTML='<i style="color:#9ca3af;">No transcript yet.</i>';
+  if (!text) {
+    alert("Please add some text first.");
     return;
   }
-  out.innerHTML=transcriptData.map((entry,idx)=>{
-    const words=entry.text.split(/\s+/).map(w=>
-      '<span class="transcript-word" onclick="useWordTime('+entry.time+')">'+escapeHtml(w)+'</span>'
-    ).join(" ");
-    return '<div class="transcript-line">'+
-      '<span class="transcript-time" onclick="seekTo('+entry.time+')">'+formatTime(entry.time)+'</span> '+
-      words+
-      ' <button style="padding:1px 6px;font-size:11px;margin-left:6px;background:#10b981;" onclick="useStampForSection('+entry.time+',\'start\')">→ Start</button>'+
-      ' <button style="padding:1px 6px;font-size:11px;background:#f59e0b;" onclick="useStampForSection('+entry.time+',\'end\')">→ End</button>'+
-      ' <button style="padding:1px 6px;font-size:11px;background:#ef4444;" onclick="removeTranscriptEntry('+idx+')">✕</button>'+
-    '</div>';
-  }).join("");
-}
 
-function escapeHtml(s){
-  return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
+  generateBtn.disabled = true;
+  status.innerText = "Creating your lesson...";
 
-function useWordTime(time){ seekTo(time); }
-function removeTranscriptEntry(idx){ transcriptData.splice(idx,1); renderTranscript(); }
-
-function useStampForSection(time,which){
-  const sections=document.querySelectorAll(".section-builder");
-  if(!sections.length){ alert("Add a section first."); return; }
-  const target=sections[sections.length-1];
-  target.querySelector("."+which).value=Math.floor(time);
-  target.scrollIntoView({behavior:"smooth",block:"center"});
-  target.style.outline="2px solid #10b981";
-  setTimeout(()=>target.style.outline="",1200);
-}
-
-function addSection(data){
-  data=data||{};
-  const div=document.createElement("div");
-  div.className="section-builder";
-  div.innerHTML=
-    '<div class="field-instruction">Enter text. Use _ for gaps.</div>'+
-    '<textarea class="text">'+(data.text||"")+'</textarea>'+
-    '<div class="field-instruction">Answers (comma separated)</div>'+
-    '<input class="answers" value="'+((data.answers||[]).join(","))+'">'+
-    '<div class="gap-warning"></div>'+
-    '<div class="gap-preview"></div>'+
-    '<div class="field-instruction">Start time</div>'+
-    '<input class="start" value="'+(data.start||0)+'">'+
-    '<button onclick="setStart(this)">Set Start</button>'+
-    '<div class="field-instruction">End time</div>'+
-    '<input class="end" value="'+(data.end||0)+'">'+
-    '<button onclick="setEnd(this)">Set End</button>'+
-    '<button style="background:#ef4444;" onclick="this.parentElement.remove()">🗑️ Remove Section</button>';
-  const textarea=div.querySelector(".text");
-  const answers=div.querySelector(".answers");
-  textarea.addEventListener("input",()=>validateSection(div));
-  answers.addEventListener("input",()=>validateSection(div));
-  document.getElementById("sections").appendChild(div);
-  validateSection(div);
-}
-
-function setStart(btn){ btn.parentElement.querySelector(".start").value=Math.floor(getTime()); }
-function setEnd(btn){ btn.parentElement.querySelector(".end").value=Math.floor(getTime()); }
-
-function validateSection(div){
-  const text=div.querySelector(".text").value;
-  const answers=div.querySelector(".answers").value;
-  const gapCount=(text.match(/_+/g)||[]).length;
-  const answerCount=answers.split(",").map(a=>a.trim()).filter(Boolean).length;
-  const warn=div.querySelector(".gap-warning");
-  const preview=div.querySelector(".gap-preview");
-  warn.innerText=(gapCount!==answerCount)?"⚠️ Gaps: "+gapCount+" | Answers: "+answerCount+" (must match)":"";
-  if(highlightMode){
-    preview.style.display="block";
-    preview.innerHTML=text.replace(/_+/g,'<span class="gap-highlight">___</span>');
-  }
-}
-
-function updateAllValidation(){
-  document.querySelectorAll(".section-builder").forEach(validateSection);
-}
-
-function collect(){
-  let effectiveUrl="", isShareable=true;
-  if(videoSourceMode==="bunny" && bunnyVideoId){
-    effectiveUrl=bunnyDirectUrl;
-  } else if(videoSourceMode==="upload" && uploadedVideoURL){
-    effectiveUrl=uploadedVideoURL;
-    isShareable=false;
-  } else {
-    effectiveUrl=document.getElementById("videoUrl").value;
-  }
-  return{
-    videoUrl:effectiveUrl,
-    bunnyVideoId:videoSourceMode==="bunny"?bunnyVideoId:null,
-    bunnyEmbedUrl:videoSourceMode==="bunny"?bunnyEmbedUrl:null,
-    bunnyDirectUrl:videoSourceMode==="bunny"?bunnyDirectUrl:null,
-    isUploadedFile:videoSourceMode==="upload",
-    isShareable:isShareable,
-    uploadedFileName:uploadedVideoName||null,
-    sections:[].slice.call(document.querySelectorAll(".section-builder")).map(s=>({
-      text:s.querySelector(".text").value,
-      answers:s.querySelector(".answers").value.split(",").map(a=>a.trim()),
-      start:+s.querySelector(".start").value,
-      end:+s.querySelector(".end").value
-    })),
-    transcript:transcriptData
-  };
-}
-
-function preview(){ loadStudent(collect(),true); }
-
-function generate(){
-  const data=collect();
-  if(!data.isShareable){
-    alert("⚠️ Local-only uploads can't be shared.\n\n👉 Use the ☁️ Cloud Upload option to host your video.");
-    return;
-  }
-  if(!data.videoUrl){ alert("Please add a video first."); return; }
-  const slim=Object.assign({},data);
-  delete slim.transcript;
-  const encoded=encodeURIComponent(JSON.stringify(slim));
-  const link=location.origin+location.pathname+"?data="+encoded;
-  document.getElementById("link").innerHTML=
-    '<b>Lesson Link:</b><br><a href="'+link+'" target="_blank">'+link+'</a>'+
-    '<br><small style="color:#6b7280;">📋 Copy and share with students.</small>';
-}
-
-function saveExercise(){
-  const data=collect();
-  if(data.isUploadedFile){
-    data.videoUrl="";
-    data._note="Local upload — re-upload after loading.";
-  }
-  const json=JSON.stringify(data,null,2);
-  const blob=new Blob([json],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  let name=prompt("Enter a name for this exercise:","exercise");
-  if(!name) name="exercise";
-  name=name.replace(/\.json$/i,"");
-  a.download=name+".json";
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function loadExerciseFile(event){
-  const file=event.target.files[0];
-  if(!file) return;
-  const reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      const data=JSON.parse(e.target.result);
-      loadBuilder(data);
-      if(data.isUploadedFile && !data.bunnyVideoId){
-        setTimeout(()=>{
-          setSourceMode("upload");
-          alert("📁 This exercise used a local upload. Please re-upload: "+(data.uploadedFileName||"your video file"));
-        },100);
-      }
-    }catch(e){ alert("Invalid exercise file"); }
-  };
-  reader.readAsText(file);
-}
-
-function loadStudent(data,previewMode){
-  lessonCache=data;
-  answersMap={};
-  hasChecked=false;
-  const isYT=data.videoUrl && data.videoUrl.includes("youtube");
-  const isBlob=data.videoUrl && data.videoUrl.startsWith("blob:");
-  const blobWarn=isBlob?'<div class="config-warning">⚠️ This preview uses a local file. Students won\'t see it unless you re-upload via Cloud Upload.</div>':'';
-  const backBtn=previewMode?'<button onclick="loadBuilder(lessonCache)">⬅ Back</button>':'';
-  const videoTag=isYT
-    ?'<div id="player"></div>'
-    :'<video id="video" controls crossorigin="anonymous"><source src="'+(isBlob?data.videoUrl:getDriveVideoUrl(data.videoUrl))+'"></video>';
-
-  app.innerHTML=
-    backBtn+
-    '<h2>🎧 Listening Exercise</h2>'+
-    blobWarn+
-    videoTag+
-    '<div id="buttons"></div>'+
-    '<div id="text"></div>'+
-    '<button onclick="playAll()">▶ Play All</button>'+
-    '<button onclick="checkAnswers()">Check Answers</button>'+
-    '<button id="revealBtn" disabled style="background:#d1d5db;color:#6b7280;" onclick="reveal()">Reveal Answers</button>'+
-    '<button onclick="repeat()">Repeat Section</button>'+
-    '<p id="result"></p>';
-
-  if(isYT){
-    loadYT(()=>ytPlayer=new YT.Player("player",{videoId:getYTid(data.videoUrl)}));
-  } else { ytPlayer=null; }
-
-  renderButtons(data);
-  renderText(data);
-}
-
-function playAll(){
-  if(!lessonCache) return;
-  if(ytPlayer){ ytPlayer.seekTo(0,true); ytPlayer.playVideo(); }
-  else{ const v=document.getElementById("video"); v.currentTime=0; v.play(); }
-}
-
-function renderButtons(data){
-  const box=document.getElementById("buttons");
-  box.innerHTML="";
-  data.sections.forEach((_,i)=>{
-    const b=document.createElement("button");
-    b.textContent="Play Section "+(i+1);
-    b.onclick=()=>play(i,data);
-    box.appendChild(b);
-  });
-}
-
-function renderText(data){
-  const container=document.getElementById("text");
-  container.innerHTML="";
-  data.sections.forEach((sec,si)=>{
-    const sectionDiv=document.createElement("div");
-    sectionDiv.id="section-"+si;
-    const parts=sec.text.split(/_+/g);
-    parts.forEach((p,i)=>{
-      sectionDiv.appendChild(document.createTextNode(p));
-      if(i<parts.length-1){
-        const wrap=document.createElement("span");
-        wrap.className="gap-wrap";
-        const input=document.createElement("input");
-        input.type="text";
-        input.className="gap-input";
-        input.id="q"+si+"_"+i;
-        answersMap[input.id]=sec.answers[i]||"";
-        wrap.appendChild(input);
-        sectionDiv.appendChild(wrap);
-      }
+  try {
+    const res = await fetch("https://gapfill-ai.williamspowerlifting.workers.dev/generate-gaps", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        transcript: [{ text }]
+      })
     });
-    container.appendChild(sectionDiv);
-  });
-}
 
-function play(i,data){
-  currentSection=i;
-  document.querySelectorAll("#text > div").forEach((d,idx)=>{
-    d.classList.toggle("section-active",idx===i);
-  });
-  const sec=data.sections[i];
-  if(ytPlayer){
-    ytPlayer.seekTo(sec.start,true);
-    ytPlayer.playVideo();
-    clearInterval(stopTimer);
-    stopTimer=setInterval(()=>{
-      if(ytPlayer.getCurrentTime()>=sec.end){ ytPlayer.pauseVideo(); clearInterval(stopTimer); }
-    },200);
-  }else{
-    const v=document.getElementById("video");
-    v.currentTime=sec.start;
-    v.play();
-    clearInterval(stopTimer);
-    stopTimer=setInterval(()=>{
-      if(v.currentTime>=sec.end){ v.pause(); clearInterval(stopTimer); }
-    },200);
+    const data = await res.json();
+
+    if (data.sections) {
+      document.getElementById("transcript").value =
+        data.sections.map(s => s.text).join("\\n\\n");
+    }
+
+    status.innerText = "Lesson ready ✓";
+  } catch (err) {
+    console.error(err);
+    status.innerText = "Something went wrong";
   }
-}
 
-function checkAnswers(){
-  let score=0;
-  Object.keys(answersMap).forEach(id=>{
-    const el=document.getElementById(id);
-    const correct=answersMap[id].toLowerCase();
-    const user=el.value.toLowerCase();
-    if(user===correct){ el.classList.add("correct"); score++; }
-    else{ el.classList.add("incorrect"); }
-  });
-  document.getElementById("result").innerText="Score: "+score+"/"+Object.keys(answersMap).length;
-  hasChecked=true;
-  const btn=document.getElementById("revealBtn");
-  btn.disabled=false;
-  btn.style.background="#4f46e5";
-  btn.style.color="white";
-}
-
-function reveal(){
-  if(!hasChecked) return;
-  Object.keys(answersMap).forEach(id=>{
-    document.getElementById(id).value=answersMap[id];
-  });
-}
-
-function repeat(){ play(currentSection,lessonCache); }
+  generateBtn.disabled = false;
+};
 </script>
 </body>
 </html>
