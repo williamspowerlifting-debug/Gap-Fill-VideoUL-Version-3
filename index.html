@@ -384,61 +384,24 @@ fileInput.onchange = () => {
 async function handleFile(file) {
   uploadStatus.innerText = "Uploading video...";
 
+  const formData = new FormData();
+  formData.append("file", file);
+
   try {
-    // 1. Upload to Bunny
-    const uploadRes = await fetch(
-      `https://video.bunnycdn.com/library/YOUR_LIBRARY_ID/videos`,
+    const res = await fetch(
+      "https://gapfill-ai.williamspowerlifting.workers.dev/upload-video",
       {
         method: "POST",
-        headers: {
-          "AccessKey": "15f2441d-6e94-4116-a6d530cf3d1b-5d71-407f",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          title: file.name
-        })
+        body: formData
       }
     );
-
-    const uploadData = await uploadRes.json();
-    const videoId = uploadData.guid;
-
-    // 2. Upload file binary
-    await fetch(
-      `https://video.bunnycdn.com/library/YOUR_LIBRARY_ID/videos/${videoId}`,
-      {
-        method: "PUT",
-        headers: {
-          "AccessKey": "15f2441d-6e94-4116-a6d530cf3d1b-5d71-407f",
-          "Content-Type": "application/octet-stream"
-        },
-        body: file
-      }
-    );
-
-    uploadStatus.innerText = "Processing video...";
-
-    // 3. Construct playback URL
-    const videoUrl = `https://iframe.mediadelivery.net/play/YOUR_LIBRARY_ID/${videoId}`;
-
-    // 4. Send to YOUR WORKER for transcription
-    const res = await fetch("https://gapfill-ai.williamspowerlifting.workers.dev/transcribe", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        audioUrl: videoUrl
-      })
-    });
 
     const data = await res.json();
 
-    if (!data || !data.text) {
-      throw new Error("Transcription failed");
+    if (!data.text) {
+      throw new Error("No transcript returned");
     }
 
-    // 5. Fill textarea
     document.getElementById("transcript").value = data.text;
 
     uploadStatus.innerText = "Transcript ready ✓";
@@ -448,7 +411,6 @@ async function handleFile(file) {
     uploadStatus.innerText = "Upload failed";
   }
 }
-
 // Generate Exercise
 generateBtn.onclick = async () => {
   const text = document.getElementById("transcript").value;
