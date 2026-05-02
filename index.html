@@ -81,7 +81,7 @@ video, iframe.video-player{
 }
 .transcript-word{
   display:inline-block;padding:2px 4px;margin:1px;
-  border-radius:4px;cursor:context-menu;transition:background 0.15s;
+  border-radius:4px;cursor:pointer;transition:background 0.15s;
   user-select:none;
 }
 .transcript-word:hover{background:#fef3c7;}
@@ -750,23 +750,27 @@ function renderTranscript() {
     return '<div class="transcript-sentence" data-sentence="' + si + '">' + wordsHtml + '</div>';
   }).join("");
   
-  // Attach context menu listeners
+  // Attach context menu listeners to each word
   document.querySelectorAll(".transcript-word").forEach(span => {
-    span.addEventListener("contextmenu", (e) => showContextMenu(e));
+    span.removeEventListener("contextmenu", handleWordContextMenu);
+    span.addEventListener("contextmenu", handleWordContextMenu);
   });
 }
 
-function showContextMenu(event) {
+function handleWordContextMenu(event) {
   event.preventDefault();
   event.stopPropagation();
   
-  const span = event.target;
+  const span = event.currentTarget;
   const sentIdx = parseInt(span.getAttribute("data-sent"));
   const wordIdx = parseInt(span.getAttribute("data-word"));
   
-  const word = sentences[sentIdx].words[wordIdx];
-  const clean = word.text.replace(/[^\w']/g, "");
+  if (isNaN(sentIdx) || isNaN(wordIdx)) return;
   
+  const word = sentences[sentIdx].words[wordIdx];
+  if (!word) return;
+  
+  const clean = word.text.replace(/[^\w']/g, "");
   if (!clean) return;
 
   const menu = document.getElementById("contextMenu");
@@ -952,9 +956,10 @@ let studentState = {
   currentIdx: 0,
   videoEl: null,
   stopTimer: null,
-  answers: {}, // { "0_0": "user typed", ... }
-  results: {}, // { "0_0": true/false }
-  finished: false
+  answers: {},
+  results: {},
+  finished: false,
+  isPreview: false
 };
 
 function startStudent(rawLesson, previewMode) {
@@ -973,11 +978,12 @@ function startStudent(rawLesson, previewMode) {
     stopTimer: null,
     answers: {},
     results: {},
-    finished: false
+    finished: false,
+    isPreview: previewMode || false
   };
 
   const backBtn = previewMode
-    ? '<button class="secondary" onclick="location.reload()">⬅ Back to builder</button>'
+    ? '<button class="secondary" onclick="exitPreview()">⬅ Back to editor</button>'
     : '';
 
   document.getElementById("app").innerHTML =
@@ -1001,6 +1007,11 @@ function startStudent(rawLesson, previewMode) {
   studentState.videoEl = document.getElementById("studentVideo");
   renderProgressDots();
   loadSentence(0);
+}
+
+function exitPreview() {
+  // Restore the builder interface
+  location.reload();
 }
 
 function normalizeLesson(raw) {
