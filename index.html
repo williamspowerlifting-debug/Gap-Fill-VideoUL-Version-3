@@ -383,13 +383,29 @@ async function handleFileUpload(file) {
   progressBar.innerText = "0%";
 
   try {
-    const createRes = await fetch(WORKER + "/create-bunny-video", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: file.name })
-    });
-    if (!createRes.ok) throw new Error("Create failed: " + createRes.status);
+    // Step 1: Create Bunny video with error diagnostics
+    let createRes;
+    try {
+      createRes = await fetch(WORKER + "/create-bunny-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: file.name })
+      });
+    } catch (fetchErr) {
+      throw new Error("Network error connecting to server: " + fetchErr.message);
+    }
+
+    if (!createRes.ok) {
+      let errorMsg = "Server error: HTTP " + createRes.status;
+      try {
+        const errorData = await createRes.json();
+        if (errorData.error) errorMsg += " - " + errorData.error;
+      } catch {}
+      throw new Error("Failed to create upload: " + errorMsg);
+    }
+
     const created = await createRes.json();
+    if (!created.guid) throw new Error("Server response missing video ID");
     bunnyGuid = created.guid;
 
     status.innerText = "⏳ Uploading " + file.name + "...";
@@ -405,9 +421,9 @@ async function handleFileUpload(file) {
       };
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) resolve();
-        else reject(new Error("Upload failed: " + xhr.status));
+        else reject(new Error("Upload failed: HTTP " + xhr.status));
       };
-      xhr.onerror = () => reject(new Error("Network error"));
+      xhr.onerror = () => reject(new Error("Network error during upload"));
       xhr.send(file);
     });
 
@@ -998,192 +1014,141 @@ function startStudent(rawLesson, previewMode) {
       '<div class="progress-dots" id="progressDots"></div>' +
       '<div class="sentence-display" id="sentenceDisplay"></div>' +
       '<div style="text-align:center;margin-top:18px;">' +
-        '<button class="secondary" onclick="replayCurrent()">🔁 Replay sentence</button>' +
-        '<button class="primary-blue" onclick="nextSentence()" id="nextBtn">Next ➡</button>' +
+        '<button class="primary-blue" onclick="replaySentence()">🔊 Replay</button>' +
+        '<button class="success" onclick="submitAnswer()" style="margin-left:8px;">Next ➜</button>' +
       '</div>' +
-      '<div class="status" id="studentStatus" style="text-align:center;"></div>' +
-    '</div>';
+    '</div>' +
+  '</div>';
 
   studentState.videoEl = document.getElementById("studentVideo");
-  renderProgressDots();
-  loadSentence(0);
-}
-
-function exitPreview() {
-  // Restore the builder interface
-  location.reload();
+  renderStudentUI();
 }
 
 function normalizeLesson(raw) {
-  // Handle both compact and full format
-  if (!raw.sentences) return raw;
-  return {
-    videoUrl: raw.videoUrl,
-    sentences: raw.sentences.map(s => {
-      if (s.words) {
-        // Already in object form (preview mode or full link)
-        return {
-          words: s.words.map(w => {
-            if (typeof w === "object" && "text" in w) return { text: w.text, isGap: !!w.isGap };
-            if (typeof w === "object" && "t" in w) return { text: w.t, isGap: !!w.g };
-            return { text: String(w), isGap: false };
-          }),
-          startTime: s.startTime !== undefined ? s.startTime : (s.s || 0),
-          endTime: s.endTime !== undefined ? s.endTime : (s.e || 0)
-        };
-      }
-      return s;
-    })
-  };
-}
-
-function renderProgressDots() {
-  const dots = document.getElementById("progressDots");
-  if (!dots) return;
-  const total = studentState.lesson.sentences.length;
-  let html = "";
-  for (let i = 0; i < total; i++) {
-    let cls = "progress-dot";
-    if (i < studentState.currentIdx) cls += " done";
-    if (i === studentState.currentIdx) cls += " current";
-    html += '<div class="' + cls + '"></div>';
-  }
-  dots.innerHTML = html;
-}
-
-function loadSentence(idx) {
-  const lesson = studentState.lesson;
-  if (idx >= lesson.sentences.length) { showFinalScore(); return; }
-
-  studentState.currentIdx = idx;
-  renderProgressDots();
-
-  const sentence = lesson.sentences[idx];
-  const display = document.getElementById("sentenceDisplay");
-
-  // Render sentence with input boxes for gaps
-  const html = sentence.words.map((w, wi) => {
-    if (w.isGap) {
-      const id = "ans_" + idx + "_" + wi;
-      const saved = studentState.answers[idx + "_" + wi] || "";
-      return '<input type="text" class="gap-input" id="' + id + '" value="' + escapeAttr(saved) +
-        '" data-correct="' + escapeAttr(w.text) + '" oninput="trackAnswer(' + idx + ',' + wi + ',this.value)" onkeydown="handleGapKey(event)">';
+  // Decode compact format (short keys like t, g, s, e)
+  if (raw.sentences && raw.sentences.length > 0) {
+    const first = raw.sentences[0];
+    if (first.words && first.words[0] && first.words[0].t) {
+      // Compact format detected
+      return {
+        videoUrl: raw.videoUrl,
+        sentences: raw.sentences.map(s => ({
+          words: s.words.map(w => ({
+            text: w.t,
+            isGap: w.g ? true : false
+          })),
+          startTime: s.s,
+          endTime: s.e
+        }))
+      };
     }
-    return escapeHtml(w.text);
+  }
+  return raw;
+}
+
+function renderStudentUI() {
+  if (studentState.finished) {
+    renderScore();
+    return;
+  }
+
+  const sent = studentState.lesson.sentences[studentState.currentIdx];
+  const dots = document.getElementById("progressDots");
+  dots.innerHTML = studentState.lesson.sentences.map((_, i) =>
+    '<div class="progress-dot ' + (i < studentState.currentIdx ? 'done' : i === studentState.currentIdx ? 'current' : '') + '"></div>'
+  ).join("");
+
+  const display = document.getElementById("sentenceDisplay");
+  display.innerHTML = sent.words.map((w, wi) => {
+    if (!w.isGap) return escapeHtml(w.text);
+    const val = studentState.answers[studentState.currentIdx + "_" + wi] || "";
+    return '<input type="text" class="gap-input" data-word="' + wi + '" value="' + escapeAttr(val) + '">';
   }).join(" ");
 
-  display.innerHTML = html;
-  document.getElementById("studentStatus").innerText = "";
+  // Auto-play sentence
+  if (studentState.videoEl) {
+    studentState.videoEl.currentTime = sent.startTime;
+    studentState.videoEl.play();
+    if (studentState.stopTimer) clearTimeout(studentState.stopTimer);
+    studentState.stopTimer = setTimeout(() => {
+      studentState.videoEl.pause();
+    }, (sent.endTime - sent.startTime) * 1000 + 500);
+  }
 
-  // Auto-play this sentence
-  playCurrentSentence();
-
-  // Focus first gap input
-  setTimeout(() => {
-    const firstInput = display.querySelector("input.gap-input");
-    if (firstInput) firstInput.focus();
-  }, 200);
+  // Focus first input
+  const inputs = display.querySelectorAll(".gap-input");
+  if (inputs.length > 0) inputs[0].focus();
 }
 
-function playCurrentSentence() {
-  const sentence = studentState.lesson.sentences[studentState.currentIdx];
-  const v = studentState.videoEl;
-  if (!v) return;
-
-  v.currentTime = sentence.startTime;
-  v.play();
-
-  clearInterval(studentState.stopTimer);
-  studentState.stopTimer = setInterval(() => {
-    if (v.currentTime >= sentence.endTime) {
-      v.pause();
-      clearInterval(studentState.stopTimer);
-    }
-  }, 100);
-}
-
-function replayCurrent() {
-  playCurrentSentence();
-}
-
-function trackAnswer(sentIdx, wordIdx, value) {
-  studentState.answers[sentIdx + "_" + wordIdx] = value;
-}
-
-function handleGapKey(e) {
-  if (e.key === "Enter" || e.key === "Tab") {
-    // Find next gap input on the same sentence; if none, advance
-    const inputs = Array.from(document.querySelectorAll("input.gap-input"));
-    const idx = inputs.indexOf(e.target);
-    if (idx >= 0 && idx < inputs.length - 1) {
-      e.preventDefault();
-      inputs[idx + 1].focus();
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      nextSentence();
-    }
+function replaySentence() {
+  const sent = studentState.lesson.sentences[studentState.currentIdx];
+  if (studentState.videoEl) {
+    studentState.videoEl.currentTime = sent.startTime;
+    studentState.videoEl.play();
+    if (studentState.stopTimer) clearTimeout(studentState.stopTimer);
+    studentState.stopTimer = setTimeout(() => {
+      studentState.videoEl.pause();
+    }, (sent.endTime - sent.startTime) * 1000 + 500);
   }
 }
 
-function checkCurrentSentence() {
-  const idx = studentState.currentIdx;
-  const sentence = studentState.lesson.sentences[idx];
-  let allCorrect = true;
-  let hasGaps = false;
+function submitAnswer() {
+  const sent = studentState.lesson.sentences[studentState.currentIdx];
+  const inputs = document.querySelectorAll(".gap-input");
+  
+  // Store answers
+  inputs.forEach((inp, wi) => {
+    studentState.answers[studentState.currentIdx + "_" + wi] = inp.value.trim();
+  });
 
-  sentence.words.forEach((w, wi) => {
-    if (w.isGap) {
-      hasGaps = true;
-      const userVal = (studentState.answers[idx + "_" + wi] || "").toLowerCase().trim();
-      const correct = w.text.toLowerCase().replace(/[^\w']/g, "").trim();
-      const userClean = userVal.replace(/[^\w']/g, "");
-      const isCorrect = userClean === correct;
-      studentState.results[idx + "_" + wi] = isCorrect;
-
-      // Visual feedback
-      const input = document.getElementById("ans_" + idx + "_" + wi);
-      if (input) {
-        input.classList.remove("correct", "incorrect");
-        input.classList.add(isCorrect ? "correct" : "incorrect");
-      }
-      if (!isCorrect) allCorrect = false;
+  // Check answers
+  let correct = 0;
+  inputs.forEach((inp, wi) => {
+    const userAns = inp.value.trim().toLowerCase();
+    const correctAns = sent.words[wi].text.toLowerCase();
+    if (userAns === correctAns) {
+      inp.classList.add("correct");
+      correct++;
+    } else {
+      inp.classList.add("incorrect");
     }
   });
 
-  return { allCorrect, hasGaps };
-}
+  studentState.results[studentState.currentIdx] = {
+    correct,
+    total: inputs.length
+  };
 
-function nextSentence() {
-  const result = checkCurrentSentence();
-  // Advance regardless of correctness (lenient mode + visible feedback)
+  // Move to next or finish
   setTimeout(() => {
-    loadSentence(studentState.currentIdx + 1);
-  }, 600);
+    studentState.currentIdx++;
+    if (studentState.currentIdx >= studentState.lesson.sentences.length) {
+      studentState.finished = true;
+    }
+    renderStudentUI();
+  }, 1500);
 }
 
-function showFinalScore() {
-  clearInterval(studentState.stopTimer);
-  studentState.finished = true;
-
-  let correct = 0, total = 0;
-  studentState.lesson.sentences.forEach((s, si) => {
-    s.words.forEach((w, wi) => {
-      if (w.isGap) {
-        total++;
-        if (studentState.results[si + "_" + wi]) correct++;
-      }
-    });
+function renderScore() {
+  let totalCorrect = 0, totalAnswers = 0;
+  Object.values(studentState.results).forEach(r => {
+    totalCorrect += r.correct;
+    totalAnswers += r.total;
   });
 
-  const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
-
-  const studentCard = document.getElementById("studentCard");
-  studentCard.innerHTML =
+  const pct = Math.round((totalCorrect / totalAnswers) * 100);
+  const card = document.getElementById("studentCard");
+  card.innerHTML =
     '<div class="score-card">' +
-      '<h2>✅ Finished!</h2>' +
+      '<h2>🎉 Complete!</h2>' +
       '<div class="score-big">' + pct + '%</div>' +
-      '<p><strong>' + correct + ' out of ' + total + '</strong> correct</p>' +
+      '<p>You got ' + totalCorrect + ' out of ' + totalAnswers + ' correct.</p>' +
+      '<button class="primary-blue" onclick="location.reload()">Try Again</button>' +
     '</div>';
+}
+
+function exitPreview() {
+  location.reload();
 }
 </script>
 </body>
