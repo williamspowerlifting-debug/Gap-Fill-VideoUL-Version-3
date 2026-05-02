@@ -78,16 +78,16 @@ video, iframe.video-player{
   background:#fff;border:1px solid #e5e7eb;border-radius:12px;
   padding:20px 24px;font-size:17px;line-height:1.9;
   max-height:480px;overflow-y:auto;
-  user-select:none;
 }
 .transcript-word{
   display:inline-block;padding:2px 4px;margin:1px;
-  border-radius:4px;cursor:pointer;transition:background 0.15s;
+  border-radius:4px;cursor:context-menu;transition:background 0.15s;
+  user-select:none;
 }
 .transcript-word:hover{background:#fef3c7;}
 .transcript-word.gap{
   background:#fde68a;color:#78350f;font-weight:600;
-  padding:4px 8px;border-radius:6px;cursor:context-menu;
+  padding:4px 8px;border-radius:6px;
 }
 .transcript-word.gap:hover{background:#fbbf24;}
 .transcript-sentence{
@@ -107,6 +107,7 @@ video, iframe.video-player{
 .context-menu.show{display:block;}
 .context-menu-item{
   padding:8px 16px;cursor:pointer;font-size:14px;transition:background 0.15s;
+  white-space:nowrap;
 }
 .context-menu-item:hover{background:#f3f4f6;}
 
@@ -741,18 +742,27 @@ function renderTranscript() {
   box.innerHTML = sentences.map((s, si) => {
     const wordsHtml = s.words.map((w, wi) => {
       if (w.isGap) {
-        return '<span class="transcript-word gap" oncontextmenu="showContextMenu(event, ' + si + ',' + wi + ')">___</span>';
+        return '<span class="transcript-word gap" data-sent="' + si + '" data-word="' + wi + '">___</span>';
       }
-      return '<span class="transcript-word" oncontextmenu="showContextMenu(event, ' + si + ',' + wi + ')">' +
+      return '<span class="transcript-word" data-sent="' + si + '" data-word="' + wi + '">' +
         escapeHtml(w.text) + '</span>';
     }).join(" ");
     return '<div class="transcript-sentence" data-sentence="' + si + '">' + wordsHtml + '</div>';
   }).join("");
+  
+  // Attach context menu listeners
+  document.querySelectorAll(".transcript-word").forEach(span => {
+    span.addEventListener("contextmenu", (e) => showContextMenu(e));
+  });
 }
 
-function showContextMenu(event, sentIdx, wordIdx) {
+function showContextMenu(event) {
   event.preventDefault();
   event.stopPropagation();
+  
+  const span = event.target;
+  const sentIdx = parseInt(span.getAttribute("data-sent"));
+  const wordIdx = parseInt(span.getAttribute("data-word"));
   
   const word = sentences[sentIdx].words[wordIdx];
   const clean = word.text.replace(/[^\w']/g, "");
@@ -795,6 +805,11 @@ function hideContextMenu() {
 }
 
 document.addEventListener("click", () => hideContextMenu());
+document.addEventListener("contextmenu", (e) => {
+  if (!e.target.classList.contains("transcript-word")) {
+    hideContextMenu();
+  }
+});
 
 // ============================================================
 // ✨ MAKE IT HAPPEN — AI gap suggestion by level
