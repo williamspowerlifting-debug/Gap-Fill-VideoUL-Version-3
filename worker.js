@@ -275,9 +275,9 @@ async function handleGenerateGaps(request, env) {
       return errorResponse("Missing transcript or level", 400);
     }
 
-    const openaiKey = env.OPENAI_API_KEY;
-    if (!openaiKey) {
-      return errorResponse("Missing OpenAI API key in Worker secrets", 500);
+    const openrouterKey = env.OPENROUTER_KEY;
+    if (!OPENROUTER_KEYKey) {
+      return errorResponse("Missing OPENROUTER API key in Worker secrets", 500);
     }
 
     const prompt = `You are an English language teacher. Given the following transcript and student level, identify important words/phrases to turn into gaps for a listening exercise.
@@ -302,10 +302,10 @@ Return a JSON array of objects with this structure:
 
 Only return the JSON array, no other text.`;
 
-    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    const openrouterRes = await fetch("https://api.openrouter.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${openaiKey}`,
+        "Authorization": `Bearer ${openrouterKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -324,12 +324,12 @@ Only return the JSON array, no other text.`;
       }),
     });
 
-    if (!openaiRes.ok) {
-      const text = await openaiRes.text();
-      throw new Error(`OpenAI error: ${openaiRes.status} - ${text}`);
+    if (!openrouterRes.ok) {
+      const text = await openrouterRes.text();
+      throw new Error(`OPENROUTER error: ${openrouterRes.status} - ${text}`);
     }
 
-    const result = await openaiRes.json();
+    const result = await openrouterRes.json();
     const content = result.choices[0].message.content;
 
     // Parse JSON response
@@ -337,7 +337,7 @@ Only return the JSON array, no other text.`;
     try {
       sections = JSON.parse(content);
     } catch (e) {
-      console.error("Failed to parse OpenAI response:", content);
+      console.error("Failed to parse OPENROUTER_KEY response:", content);
       sections = [];
     }
 
