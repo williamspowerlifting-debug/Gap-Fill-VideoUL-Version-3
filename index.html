@@ -582,7 +582,48 @@ function buildSentencesFromTranscript(data) {
   }
 
   const rawSentences = splitIntoSentences(text);
+// Combine sentences without gaps into the NEXT sentence that has gaps.
+// If trailing sentences have no gaps, attach them to the previous group.
+function groupSentencesForStudent(rawSentences) {
+  const groups = [];
+  let pending = []; // sentences that have no gaps, waiting to attach
 
+  rawSentences.forEach(s => {
+    const hasGap = s.words.some(w => w.isGap);
+    if (!hasGap) {
+      pending.push(s);
+    } else {
+      // Merge any pending non-gap sentences with this one
+      const allWords = [];
+      pending.forEach(p => p.words.forEach(w => allWords.push(w)));
+      s.words.forEach(w => allWords.push(w));
+
+      const startTime = pending.length > 0 ? pending[0].startTime : s.startTime;
+      const endTime = s.endTime;
+
+      groups.push({
+        words: allWords,
+        startTime,
+        endTime
+      });
+      pending = [];
+    }
+  });
+
+  // Any leftover non-gap sentences at the end — attach to last group
+  if (pending.length > 0 && groups.length > 0) {
+    const last = groups[groups.length - 1];
+    pending.forEach(p => {
+      p.words.forEach(w => last.words.push(w));
+      last.endTime = Math.max(last.endTime, p.endTime);
+    });
+  } else if (pending.length > 0) {
+    // No gap-bearing sentences at all — fallback: keep as-is
+    pending.forEach(p => groups.push(p));
+  }
+
+  return groups;
+}
   // Attach timestamps by aligning each token to the words array
   let wordIdx = 0;
   sentences = rawSentences.map(rawText => {
