@@ -328,43 +328,19 @@ let sentences = [];
 let editModeActive = false;
 // Combine sentences without gaps into the NEXT sentence that has gaps.
 // If trailing sentences have no gaps, attach them to the previous group.
-function groupSentencesForStudent(rawSentences) {
-  const groups = [];
-  let pending = []; // sentences that have no gaps, waiting to attach
-
-  rawSentences.forEach(s => {
-    const hasGap = s.words.some(w => w.isGap);
-    if (!hasGap) {
-      pending.push(s);
-    } else {
-      // Merge any pending non-gap sentences with this one
-      const allWords = [];
-      pending.forEach(p => p.words.forEach(w => allWords.push(w)));
-      s.words.forEach(w => allWords.push(w));
-
-      const startTime = pending.length > 0 ? pending[0].startTime : s.startTime;
-      const endTime = s.endTime;
-
-      groups.push({
-        words: allWords,
-        startTime,
-        endTime
-      });
-      pending = [];
+  // Ensure each group has at least one gap
+  groups.forEach(g => {
+    const hasGap = g.words.some(w => w.isGap);
+    if (!hasGap && g.words.length > 0) {
+      for (const w of g.words) {
+        const clean = w.text.replace(/[^\w']/g, "");
+        if (clean.length > 2) {
+          w.isGap = true;
+          break;
+        }
+      }
     }
   });
-
-  // Any leftover non-gap sentences at the end — attach to last group
-  if (pending.length > 0 && groups.length > 0) {
-    const last = groups[groups.length - 1];
-    pending.forEach(p => {
-      p.words.forEach(w => last.words.push(w));
-      last.endTime = Math.max(last.endTime, p.endTime);
-    });
-  } else if (pending.length > 0) {
-    // No gap-bearing sentences at all — fallback: keep as-is
-    pending.forEach(p => groups.push(p));
-  }
 
   return groups;
 }
@@ -914,37 +890,59 @@ let studentState = {
   finished: false,
   isPreview: false
 };
+function groupSentencesForStudent(rawSentences) {
+  const groups = [];
+  let pending = [];
 
+  rawSentences.forEach(s => {
+    const hasGap = s.words.some(w => w.isGap);
+
+    if (!hasGap) {
+      pending.push(s);
+    } else {
+      const allWords = [];
+
+      pending.forEach(p => p.words.forEach(w => allWords.push(w)));
+      s.words.forEach(w => allWords.push(w));
+
+      groups.push({
+        words: allWords,
+        startTime: pending.length ? pending[0].startTime : s.startTime,
+        endTime: s.endTime
+      });
+
+      pending = [];
+    }
+  });
+
+  if (pending.length && groups.length) {
+    const last = groups[groups.length - 1];
+    pending.forEach(p => {
+      p.words.forEach(w => last.words.push(w));
+      last.endTime = Math.max(last.endTime, p.endTime);
+    });
+  }
+
+  return groups.length ? groups : rawSentences;
+}
 function startStudent(rawLesson, previewMode) {
   const lesson = normalizeLesson(rawLesson);
+
   if (!lesson.sentences || !lesson.sentences.length) {
     alert("⚠️ This lesson has no sentences.");
     return;
   }
 
-  // Group sentences so any non-gap sentences are merged with the next gap-bearing one
+  // ✅ GROUP sentences (THIS WAS MISSING)
   const groupedSentences = groupSentencesForStudent(lesson.sentences);
-  const finalLesson = { videoUrl: lesson.videoUrl, sentences: groupedSentences };
 
-function buildStudentMarkup(lesson) {
-  return '<div class="card">' +
-      '<video id="studentVideo" class="video-player" controls crossorigin="anonymous">' +
-        '<source src="' + escapeAttr(lesson.videoUrl) + '">' +
-      '</video>' +
-    '</div>' +
-    '<div class="card student-card" id="studentCard">' +
-      '<div class="progress-dots" id="progressDots"></div>' +
-      '<div class="sentence-display" id="sentenceDisplay"></div>' +
-      '<div style="text-align:center;margin-top:18px;">' +
-        '<button class="secondary" onclick="replayCurrent()">🔁 Replay</button>' +
-        '<button class="primary-blue" onclick="nextSentence()" id="nextBtn">Next ➡</button>' +
-      '</div>' +
-      '<div class="status" id="studentStatus" style="text-align:center;"></div>' +
-    '</div>';
-}
+  const finalLesson = {
+    videoUrl: lesson.videoUrl,
+    sentences: groupedSentences
+  };
 
   studentState = {
-    lesson,
+    lesson: finalLesson,
     currentIdx: 0,
     videoEl: null,
     stopTimer: null,
@@ -954,45 +952,51 @@ function buildStudentMarkup(lesson) {
     isPreview: previewMode || false
   };
 
-  const backBtn = previewMode
-    ? '<button class="secondary" onclick="exitPreview()">⬅ Back to editor</button>'
-    : '';
+  // ✅ PREVIEW MODE (FIXES BACK BUTTON + UI)
+  if (previewMode) {
+    const app = document.getElementById("app");
+    app.style.display = "none";
 
-  document.getElementById("app").innerHTML =
-    '<div style="margin-bottom:14px;">' + backBtn + '</div>' +
-    '<h1>🎧 Listening Exercise</h1>' +
-    '<div class="card">' +
-      '<video id="studentVideo" class="video-player" controls crossorigin="anonymous">' +
-        '<source src="' + escapeAttr(lesson.videoUrl) + '">' +
-      '</video>' +
-    '</div>' +
-    '<div class="card student-card" id="studentCard">' +
-      '<div class="progress-dots" id="progressDots"></div>' +
-      '<div class="sentence-display" id="sentenceDisplay"></div>' +
-      '<div style="text-align:center;margin-top:18px;">' +
-        '<button class="secondary" onclick="replayCurrent()">🔁 Replay sentence</button>' +
-        '<button class="primary-blue" onclick="nextSentence()" id="nextBtn">Next ➡</button>' +
+    let studentEl = document.getElementById("studentApp");
+
+    if (!studentEl) {
+      studentEl = document.createElement("div");
+      studentEl.id = "studentApp";
+      studentEl.className = "container";
+      document.body.appendChild(studentEl);
+    }
+
+    studentEl.style.display = "block";
+
+    studentEl.innerHTML =
+      '<div style="margin-bottom:14px;">' +
+        '<button class="secondary" onclick="exitPreview()">⬅ Back to editor</button>' +
       '</div>' +
-      '<div class="status" id="studentStatus" style="text-align:center;"></div>' +
-    '</div>';
+      '<h1>🎧 Listening Exercise</h1>' +
+      buildStudentMarkup(finalLesson);
+
+  } else {
+    document.getElementById("app").innerHTML =
+      '<h1>🎧 Listening Exercise</h1>' +
+      buildStudentMarkup(finalLesson);
+  }
 
   studentState.videoEl = document.getElementById("studentVideo");
+
   renderProgressDots();
   loadSentence(0);
 }
-
 function exitPreview() {
-  // Hide student view, show builder again — without losing state
-  const studentEl = document.getElementById("studentApp");
-  if (studentEl) studentEl.style.display = "none";
-
   const app = document.getElementById("app");
-  if (app) app.style.display = "block";
 
-  // Stop video playback
-  if (studentState.videoEl) {
-    try { studentState.videoEl.pause(); } catch (e) {}
+  if (window._builderHTML) {
+    app.innerHTML = window._builderHTML;
   }
+
+  if (studentState.videoEl) {
+    try { studentState.videoEl.pause(); } catch {}
+  }
+
   clearInterval(studentState.stopTimer);
 }
 
