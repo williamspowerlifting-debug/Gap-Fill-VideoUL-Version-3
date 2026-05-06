@@ -145,13 +145,9 @@ video, iframe.video-player{
 /* Student view styles */
 .student-card{padding:24px;}
 .sentence-display{
-  font-size:22px;line-height:2.4;text-align:center;
-  padding:28px 24px;background:#f9fafb;border-radius:14px;
-  min-height:120px;border:1px solid #e5e7eb;
-  word-spacing:2px;
-}
-.sentence-display .non-gap{
-  color:#1f2937;
+  font-size:22px;line-height:2.2;text-align:center;
+  padding:24px;background:#f9fafb;border-radius:14px;
+  min-height:100px;
 }
 .gap-input{
   display:inline-block;width:140px;height:34px;border:none;
@@ -326,24 +322,7 @@ let builderPlayer = null;
 // Transcript state
 let sentences = [];
 let editModeActive = false;
-// Combine sentences without gaps into the NEXT sentence that has gaps.
-// If trailing sentences have no gaps, attach them to the previous group.
-  // Ensure each group has at least one gap
-  groups.forEach(g => {
-    const hasGap = g.words.some(w => w.isGap);
-    if (!hasGap && g.words.length > 0) {
-      for (const w of g.words) {
-        const clean = w.text.replace(/[^\w']/g, "");
-        if (clean.length > 2) {
-          w.isGap = true;
-          break;
-        }
-      }
-    }
-  });
 
-  return groups;
-}
 // ============================================================
 // 🔁 Routing — student vs builder
 // ============================================================
@@ -890,70 +869,55 @@ let studentState = {
   finished: false,
   isPreview: false
 };
-function groupSentencesForStudent(rawSentences) {
-  const groups = [];
-  let pending = [];
 
-  rawSentences.forEach(s => {
-    const hasGap = s.words.some(w => w.isGap);
-
-    if (!hasGap) {
-      pending.push(s);
-    } else {
-      const allWords = [];
-
-      pending.forEach(p => p.words.forEach(w => allWords.push(w)));
-      s.words.forEach(w => allWords.push(w));
-
-      groups.push({
-        words: allWords,
-        startTime: pending.length ? pending[0].startTime : s.startTime,
-        endTime: s.endTime
-      });
-
-      pending = [];
-    }
-  });
-
-  if (pending.length && groups.length) {
-    const last = groups[groups.length - 1];
-    pending.forEach(p => {
-      p.words.forEach(w => last.words.push(w));
-      last.endTime = Math.max(last.endTime, p.endTime);
-    });
-  }
-
-  return groups.length ? groups : rawSentences;
-}
 function startStudent(rawLesson, previewMode) {
   const lesson = normalizeLesson(rawLesson);
-
   if (!lesson.sentences || !lesson.sentences.length) {
-    alert("⚠️ This lesson has no sentences.");
+    document.getElementById("app").innerHTML =
+      '<div class="card"><h2>⚠️ This lesson has no sentences.</h2></div>';
     return;
   }
 
-  // ✅ GROUP sentences (THIS WAS MISSING)
-  const groupedSentences = groupSentencesForStudent(lesson.sentences);
-
-  const finalLesson = {
-    videoUrl: lesson.videoUrl,
-    sentences: groupedSentences
+  studentState = {
+    lesson,
+    currentIdx: 0,
+    videoEl: null,
+    stopTimer: null,
+    answers: {},
+    results: {},
+    finished: false,
+    isPreview: previewMode || false
   };
 
+  const backBtn = previewMode
+    ? '<button class="secondary" onclick="exitPreview()">⬅ Back to editor</button>'
+    : '';
+
+  document.getElementById("app").innerHTML =
+    '<div style="margin-bottom:14px;">' + backBtn + '</div>' +
+    '<h1>🎧 Listening Exercise</h1>' +
+    '<div class="card">' +
+      '<video id="studentVideo" class="video-player" controls crossorigin="anonymous">' +
+        '<source src="' + escapeAttr(lesson.videoUrl) + '">' +
+      '</video>' +
+    '</div>' +
+    '<div class="card student-card" id="studentCard">' +
+      '<div class="progress-dots" id="progressDots"></div>' +
+      '<div class="sentence-display" id="sentenceDisplay"></div>' +
+      '<div style="text-align:center;margin-top:18px;">' +
+        '<button class="secondary" onclick="replayCurrent()">🔁 Replay sentence</button>' +
+        '<button class="primary-blue" onclick="nextSentence()" id="nextBtn">Next ➡</button>' +
+      '</div>' +
+      '<div class="status" id="studentStatus" style="text-align:center;"></div>' +
+    '</div>';
+
+  studentState.videoEl = document.getElementById("studentVideo");
+  renderProgressDots();
+  loadSentence(0);
+}
 
 function exitPreview() {
-  const app = document.getElementById("app");
-
-  if (window._builderHTML) {
-    app.innerHTML = window._builderHTML;
-  }
-
-  if (studentState.videoEl) {
-    try { studentState.videoEl.pause(); } catch {}
-  }
-
-  clearInterval(studentState.stopTimer);
+  location.reload();
 }
 
 function normalizeLesson(raw) {
