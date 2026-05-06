@@ -145,9 +145,17 @@ video, iframe.video-player{
 /* Student view styles */
 .student-card{padding:24px;}
 .sentence-display{
-  font-size:22px;line-height:2.2;text-align:center;
-  padding:24px;background:#f9fafb;border-radius:14px;
-  min-height:100px;
+  font-size:22px;
+  line-height:1.4;        /* tighter */
+  text-align:left;        /* more natural reading */
+  padding:24px;
+  background:#f9fafb;
+  border-radius:14px;
+  min-height:80px;
+
+  display:flex;           /* 👈 key */
+  flex-wrap:wrap;         /* allow wrapping nicely */
+  gap:6px;                /* spacing between words */
 }
 .gap-input{
   display:inline-block;width:140px;height:34px;border:none;
