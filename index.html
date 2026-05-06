@@ -873,13 +873,16 @@ let studentState = {
 function startStudent(rawLesson, previewMode) {
   const lesson = normalizeLesson(rawLesson);
   if (!lesson.sentences || !lesson.sentences.length) {
-    document.getElementById("app").innerHTML =
-      '<div class="card"><h2>⚠️ This lesson has no sentences.</h2></div>';
+    alert("⚠️ This lesson has no sentences.");
     return;
   }
 
+  // Group sentences so any non-gap sentences are merged with the next gap-bearing one
+  const groupedSentences = groupSentencesForStudent(lesson.sentences);
+  const finalLesson = { videoUrl: lesson.videoUrl, sentences: groupedSentences };
+
   studentState = {
-    lesson,
+    lesson: finalLesson,
     currentIdx: 0,
     videoEl: null,
     stopTimer: null,
@@ -889,14 +892,40 @@ function startStudent(rawLesson, previewMode) {
     isPreview: previewMode || false
   };
 
-  const backBtn = previewMode
-    ? '<button class="secondary" onclick="exitPreview()">⬅ Back to editor</button>'
-    : '';
+  if (previewMode) {
+    // Preserve the builder — hide it, show student view in an overlay container
+    const app = document.getElementById("app");
+    app.style.display = "none";
 
-  document.getElementById("app").innerHTML =
-    '<div style="margin-bottom:14px;">' + backBtn + '</div>' +
-    '<h1>🎧 Listening Exercise</h1>' +
-    '<div class="card">' +
+    // Create or reuse student container
+    let studentEl = document.getElementById("studentApp");
+    if (!studentEl) {
+      studentEl = document.createElement("div");
+      studentEl.id = "studentApp";
+      studentEl.className = "container";
+      document.body.appendChild(studentEl);
+    }
+    studentEl.style.display = "block";
+
+    studentEl.innerHTML =
+      '<div style="margin-bottom:14px;">' +
+        '<button class="secondary" onclick="exitPreview()">⬅ Back to editor</button>' +
+      '</div>' +
+      '<h1>🎧 Listening Exercise</h1>' +
+      buildStudentMarkup(finalLesson);
+  } else {
+    // Real student view — replace whole app
+    document.getElementById("app").innerHTML =
+      '<h1>🎧 Listening Exercise</h1>' + buildStudentMarkup(finalLesson);
+  }
+
+  studentState.videoEl = document.getElementById("studentVideo");
+  renderProgressDots();
+  loadSentence(0);
+}
+
+function buildStudentMarkup(lesson) {
+  return '<div class="card">' +
       '<video id="studentVideo" class="video-player" controls crossorigin="anonymous">' +
         '<source src="' + escapeAttr(lesson.videoUrl) + '">' +
       '</video>' +
@@ -905,15 +934,11 @@ function startStudent(rawLesson, previewMode) {
       '<div class="progress-dots" id="progressDots"></div>' +
       '<div class="sentence-display" id="sentenceDisplay"></div>' +
       '<div style="text-align:center;margin-top:18px;">' +
-        '<button class="secondary" onclick="replayCurrent()">🔁 Replay sentence</button>' +
+        '<button class="secondary" onclick="replayCurrent()">🔁 Replay</button>' +
         '<button class="primary-blue" onclick="nextSentence()" id="nextBtn">Next ➡</button>' +
       '</div>' +
       '<div class="status" id="studentStatus" style="text-align:center;"></div>' +
     '</div>';
-
-  studentState.videoEl = document.getElementById("studentVideo");
-  renderProgressDots();
-  loadSentence(0);
 }
 
 function exitPreview() {
