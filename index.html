@@ -917,7 +917,18 @@ function startStudent(rawLesson, previewMode) {
 }
 
 function exitPreview() {
-  location.reload();
+  // Hide student view, show builder again — without losing state
+  const studentEl = document.getElementById("studentApp");
+  if (studentEl) studentEl.style.display = "none";
+
+  const app = document.getElementById("app");
+  if (app) app.style.display = "block";
+
+  // Stop video playback
+  if (studentState.videoEl) {
+    try { studentState.videoEl.pause(); } catch (e) {}
+  }
+  clearInterval(studentState.stopTimer);
 }
 
 function normalizeLesson(raw) {
