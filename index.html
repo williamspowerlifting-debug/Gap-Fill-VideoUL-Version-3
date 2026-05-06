@@ -941,51 +941,7 @@ function startStudent(rawLesson, previewMode) {
     sentences: groupedSentences
   };
 
-  studentState = {
-    lesson: finalLesson,
-    currentIdx: 0,
-    videoEl: null,
-    stopTimer: null,
-    answers: {},
-    results: {},
-    finished: false,
-    isPreview: previewMode || false
-  };
 
-  // ✅ PREVIEW MODE (FIXES BACK BUTTON + UI)
-  if (previewMode) {
-    const app = document.getElementById("app");
-    app.style.display = "none";
-
-    let studentEl = document.getElementById("studentApp");
-
-    if (!studentEl) {
-      studentEl = document.createElement("div");
-      studentEl.id = "studentApp";
-      studentEl.className = "container";
-      document.body.appendChild(studentEl);
-    }
-
-    studentEl.style.display = "block";
-
-    studentEl.innerHTML =
-      '<div style="margin-bottom:14px;">' +
-        '<button class="secondary" onclick="exitPreview()">⬅ Back to editor</button>' +
-      '</div>' +
-      '<h1>🎧 Listening Exercise</h1>' +
-      buildStudentMarkup(finalLesson);
-
-  } else {
-    document.getElementById("app").innerHTML =
-      '<h1>🎧 Listening Exercise</h1>' +
-      buildStudentMarkup(finalLesson);
-  }
-
-  studentState.videoEl = document.getElementById("studentVideo");
-
-  renderProgressDots();
-  loadSentence(0);
-}
 function exitPreview() {
   const app = document.getElementById("app");
 
