@@ -324,17 +324,8 @@ let sentences = [];
 let editModeActive = false;
 
 // ============================================================
-// 🔁 Routing — student vs builder
+// 🔁 Routing — runs after all functions are defined (see bottom of page)
 // ============================================================
-const params = new URLSearchParams(location.search);
-const rawData = params.get("data");
-if (rawData) {
-  try { startStudent(JSON.parse(decodeURIComponent(rawData))); }
-  catch (e) {
-    document.getElementById("app").innerHTML =
-      '<div class="card"><h2>⚠️ Invalid lesson link.</h2></div>';
-  }
-}
 
 // ============================================================
 // 🎬 VIDEO HANDLING
@@ -570,23 +561,14 @@ function splitIntoSentences(text) {
   return out;
 }
 
-function buildSentencesFromTranscript(data) {
-  const status = document.getElementById("transcribeStatus");
-  const text = data.text || "";
-  const words = data.words || [];
-
-  if (!text.trim()) {
-    status.className = "status error";
-    status.innerText = "❌ Empty transcript.";
-    return;
-  }
-
-  const rawSentences = splitIntoSentences(text);
-// Combine sentences without gaps into the NEXT sentence that has gaps.
-// If trailing sentences have no gaps, attach them to the previous group.
+// ============================================================
+// 🔀 GROUP SENTENCES — merges non-gap sentences with the next
+//    gap-bearing one so students always have something to fill.
+//    *** Must be at global scope so startStudent() can call it ***
+// ============================================================
 function groupSentencesForStudent(rawSentences) {
   const groups = [];
-  let pending = []; // sentences that have no gaps, waiting to attach
+  let pending = []; // sentences with no gaps, waiting to be merged forward
 
   rawSentences.forEach(s => {
     const hasGap = s.words.some(w => w.isGap);
@@ -601,11 +583,7 @@ function groupSentencesForStudent(rawSentences) {
       const startTime = pending.length > 0 ? pending[0].startTime : s.startTime;
       const endTime = s.endTime;
 
-      groups.push({
-        words: allWords,
-        startTime,
-        endTime
-      });
+      groups.push({ words: allWords, startTime, endTime });
       pending = [];
     }
   });
@@ -618,12 +596,26 @@ function groupSentencesForStudent(rawSentences) {
       last.endTime = Math.max(last.endTime, p.endTime);
     });
   } else if (pending.length > 0) {
-    // No gap-bearing sentences at all — fallback: keep as-is
+    // No gap-bearing sentences at all — keep as-is
     pending.forEach(p => groups.push(p));
   }
 
   return groups;
 }
+
+function buildSentencesFromTranscript(data) {
+  const status = document.getElementById("transcribeStatus");
+  const text = data.text || "";
+  const words = data.words || [];
+
+  if (!text.trim()) {
+    status.className = "status error";
+    status.innerText = "❌ Empty transcript.";
+    return;
+  }
+
+  const rawSentences = splitIntoSentences(text);
+
   // Attach timestamps by aligning each token to the words array
   let wordIdx = 0;
   sentences = rawSentences.map(rawText => {
@@ -708,7 +700,7 @@ function applyTranscriptEdit() {
   const oldSentences = sentences;
   sentences = rawSentences.map((rawText, idx) => {
     const tokens = rawText.split(/\s+/).filter(Boolean);
-    const sentenceWords = tokens.map((token, wi) => ({
+    const sentenceWords = tokens.map(token => ({
       text: token,
       time: 0,
       isGap: false
@@ -934,9 +926,14 @@ function startStudent(rawLesson, previewMode) {
   };
 
   if (previewMode) {
-    // Preserve the builder — hide it, show student view in an overlay container
+    // Hide the builder, show the student view in a separate container
     const app = document.getElementById("app");
     app.style.display = "none";
+
+    // Pause the builder video if playing
+    if (builderPlayer && typeof builderPlayer.pause === "function") {
+      try { builderPlayer.pause(); } catch (e) {}
+    }
 
     // Create or reuse student container
     let studentEl = document.getElementById("studentApp");
@@ -982,18 +979,23 @@ function buildStudentMarkup(lesson) {
     '</div>';
 }
 
+// ============================================================
+// ⬅ EXIT PREVIEW — stop student, restore builder
+// ============================================================
 function exitPreview() {
-  const app = document.getElementById("app");
-
-  if (window._builderHTML) {
-    app.innerHTML = window._builderHTML;
-  }
-
+  // Stop student video and clear polling timer
   if (studentState.videoEl) {
     try { studentState.videoEl.pause(); } catch (e) {}
   }
-
   clearInterval(studentState.stopTimer);
+
+  // Hide student view
+  const studentEl = document.getElementById("studentApp");
+  if (studentEl) studentEl.style.display = "none";
+
+  // Show the builder again
+  const app = document.getElementById("app");
+  app.style.display = "block";
 }
 
 function normalizeLesson(raw) {
@@ -1186,6 +1188,24 @@ function showAnswers() {
 
   review.innerHTML = '<h3 style="text-align:left;">Answer review</h3>' + html;
 }
+</script>
+
+<script>
+// ============================================================
+// 🔁 Routing — student vs builder
+// Must run AFTER all functions (startStudent, normalizeLesson, etc.) are defined.
+// ============================================================
+(function () {
+  const params = new URLSearchParams(location.search);
+  const rawData = params.get("data");
+  if (rawData) {
+    try { startStudent(JSON.parse(rawData)); }
+    catch (e) {
+      document.getElementById("app").innerHTML =
+        '<div class="card"><h2>⚠️ Invalid lesson link.</h2></div>';
+    }
+  }
+})();
 </script>
 
 </body>
