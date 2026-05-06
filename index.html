@@ -1068,7 +1068,10 @@ function renderProgressDots() {
 
 function loadSentence(idx) {
   const lesson = studentState.lesson;
-  if (idx >= lesson.sentences.length) { showFinalScore(); return; }
+  if (idx >= lesson.sentences.length) { 
+    showFinalScore(); 
+    return; 
+  }
 
   studentState.currentIdx = idx;
   renderProgressDots();
@@ -1080,13 +1083,20 @@ function loadSentence(idx) {
     if (w.isGap) {
       const id = "ans_" + idx + "_" + wi;
       const saved = studentState.answers[idx + "_" + wi] || "";
-      return '<input type="text" class="gap-input" id="' + id + '" value="' + escapeAttr(saved) +
-        '" data-correct="' + escapeAttr(w.text) + '" oninput="trackAnswer(' + idx + ',' + wi + ',this.value)" onkeydown="handleGapKey(event)">';
+
+      return '<span>' +
+        '<input type="text" class="gap-input" id="' + id + '" value="' + escapeAttr(saved) + '"' +
+        ' data-correct="' + escapeAttr(w.text) + '"' +
+        ' oninput="trackAnswer(' + idx + ',' + wi + ',this.value)"' +
+        ' onkeydown="handleGapKey(event)">' +
+      '</span>';
     }
-    return escapeHtml(w.text);
-  }).join(" ");
+
+    return '<span>' + escapeHtml(w.text) + '</span>';
+  }).join(""); // 👈 important: no spaces here
 
   display.innerHTML = html;
+
   document.getElementById("studentStatus").innerText = "";
 
   playCurrentSentence();
