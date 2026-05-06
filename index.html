@@ -1064,21 +1064,30 @@ function loadSentence(idx) {
   }, 200);
 }
 
+let sentenceStopHandler = null;
+
 function playCurrentSentence() {
   const sentence = studentState.lesson.sentences[studentState.currentIdx];
   const v = studentState.videoEl;
   if (!v) return;
 
   v.currentTime = sentence.startTime;
-  v.play();
 
-  clearInterval(studentState.stopTimer);
-  studentState.stopTimer = setInterval(() => {
+  // Remove previous listener
+  if (sentenceStopHandler) {
+    v.removeEventListener("timeupdate", sentenceStopHandler);
+  }
+
+  sentenceStopHandler = function () {
     if (v.currentTime >= sentence.endTime) {
       v.pause();
-      clearInterval(studentState.stopTimer);
+      v.removeEventListener("timeupdate", sentenceStopHandler);
+      sentenceStopHandler = null;
     }
-  }, 100);
+  };
+
+  v.addEventListener("timeupdate", sentenceStopHandler);
+  v.play();
 }
 
 function replayCurrent() {
