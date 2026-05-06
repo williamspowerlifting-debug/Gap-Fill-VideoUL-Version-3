@@ -78,16 +78,19 @@ video, iframe.video-player{
   background:#fff;border:1px solid #e5e7eb;border-radius:12px;
   padding:20px 24px;font-size:17px;line-height:1.9;
   max-height:480px;overflow-y:auto;
+  user-select:none;
+  -webkit-user-select:none;
 }
 .transcript-word{
-  display:inline-block;padding:2px 4px;margin:1px;
-  border-radius:4px;cursor:pointer;transition:background 0.15s;
-  user-select:none;
+  display:inline-block;padding:2px 6px;margin:1px;
+  border-radius:4px;cursor:pointer;
+  transition:background 0.15s, transform 0.1s;
 }
 .transcript-word:hover{background:#fef3c7;}
+.transcript-word:active{transform:scale(0.95);}
 .transcript-word.gap{
   background:#fde68a;color:#78350f;font-weight:600;
-  padding:4px 8px;border-radius:6px;
+  padding:2px 8px;
 }
 .transcript-word.gap:hover{background:#fbbf24;}
 .transcript-sentence{
@@ -95,30 +98,17 @@ video, iframe.video-player{
 }
 .transcript-help{
   background:#eff6ff;border-left:4px solid #3b82f6;
-  padding:10px 14px;border-radius:6px;margin-bottom:12px;font-size:13px;color:#1e40af;
+  padding:10px 14px;border-radius:6px;margin-bottom:12px;font-size:14px;color:#1e40af;
 }
 
-/* Context menu */
-.context-menu{
-  position:fixed;background:white;border:1px solid #d0d5dd;
-  border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);
-  padding:4px 0;z-index:10000;display:none;min-width:160px;
-}
-.context-menu.show{display:block;}
-.context-menu-item{
-  padding:8px 16px;cursor:pointer;font-size:14px;transition:background 0.15s;
-  white-space:nowrap;
-}
-.context-menu-item:hover{background:#f3f4f6;}
-
-/* Edit mode */
+/* Edit-text mode */
 .transcript-edit-area{
-  width:100%;min-height:120px;padding:12px;border:1px solid #4f46e5;
-  border-radius:8px;font-family:monospace;font-size:14px;box-sizing:border-box;
-  margin-bottom:12px;
+  width:100%;min-height:160px;padding:14px;border:2px solid #4f46e5;
+  border-radius:10px;font-family:inherit;font-size:15px;
+  box-sizing:border-box;line-height:1.6;
 }
 .transcript-edit-buttons{
-  display:flex;gap:8px;margin-bottom:12px;
+  display:flex;gap:8px;margin-top:10px;
 }
 
 /* Settings row */
@@ -191,6 +181,7 @@ video, iframe.video-player{
   .transcript-box{font-size:16px;padding:14px;}
   .sentence-display{font-size:18px;padding:16px;}
   .gap-input{width:100px;font-size:18px;}
+  .transcript-word{padding:4px 8px;}
 }
 </style>
 </head>
@@ -234,11 +225,11 @@ video, iframe.video-player{
   <div class="card" id="step3Card" style="display:none;">
     <h2>3. Transcript</h2>
     <div class="transcript-help">
-      💡 <b>Right-click any word</b> to add/remove gaps. Gaps display as <b>___</b>. Click <b>✏️ Edit Text</b> to fix transcription errors.
+      💡 <b>Tap or click any word</b> to mark it as a gap. Tap a yellow word to remove the gap.
     </div>
-    <button class="secondary" onclick="toggleEditMode()" style="margin-bottom:12px;">✏️ Edit Text</button>
+    <button class="secondary" onclick="toggleEditMode()" id="editModeBtn" style="margin-bottom:12px;">✏️ Edit Text</button>
     <div id="editModeContainer" style="display:none;margin-bottom:12px;">
-      <textarea id="transcriptEditArea" class="transcript-edit-area"></textarea>
+      <textarea id="transcriptEditArea" class="transcript-edit-area" placeholder="Edit the transcript text here..."></textarea>
       <div class="transcript-edit-buttons">
         <button class="success" onclick="applyTranscriptEdit()">✅ Apply Changes</button>
         <button class="danger" onclick="cancelTranscriptEdit()">❌ Cancel</button>
@@ -272,9 +263,6 @@ video, iframe.video-player{
   </div>
 </div>
 
-<!-- Context Menu -->
-<div class="context-menu" id="contextMenu"></div>
-
 <!-- Help button -->
 <button class="help-fab" onclick="document.getElementById('helpOverlay').classList.add('show')" title="Help">❓</button>
 
@@ -285,16 +273,16 @@ video, iframe.video-player{
     <p>Create a listening exercise in under 2 minutes.</p>
 
     <h3>1. Upload a video</h3>
-    <p>Drag and drop or click. Any common format works (MP4, MOV, MKV, WEBM, AVI).</p>
+    <p>Drag and drop or click. Any common format works.</p>
 
     <h3>2. Wait for transcript</h3>
     <p>The transcript appears automatically — no button to click.</p>
 
-    <h3>3. Edit gaps (optional)</h3>
+    <h3>3. Edit gaps</h3>
     <ul>
-      <li><b>Right-click any word</b> → <b>"➕ Add gap"</b> to create a gap (displays as ___).</li>
-      <li><b>Right-click a gap (___)</b> → <b>"❌ Remove gap"</b> to restore the word.</li>
-      <li><b>Click "✏️ Edit Text"</b> to correct transcription mistakes before creating gaps.</li>
+      <li><b>Click any word</b> to make it a gap (turns yellow).</li>
+      <li><b>Click a yellow word</b> to remove the gap.</li>
+      <li><b>"✏️ Edit Text"</b> button lets you fix transcription mistakes.</li>
     </ul>
 
     <h3>4. Click "Make it happen"</h3>
@@ -302,16 +290,16 @@ video, iframe.video-player{
 
     <h3>5. Share with students</h3>
     <ul>
-      <li><b>Preview</b> — See exactly what students will see.</li>
+      <li><b>Preview</b> — See what students will see.</li>
       <li><b>Student Link</b> — Copy and send. No signup needed.</li>
     </ul>
 
-    <h3>How students complete the exercise</h3>
+    <h3>How students use it</h3>
     <ol>
-      <li>The video plays the first sentence.</li>
-      <li>They type the missing words (answers are pre-filled after you create gaps).</li>
-      <li>They can replay the sentence as many times as needed.</li>
-      <li>Press Enter or click <b>Next</b> to move to the next sentence.</li>
+      <li>The video plays the first sentence automatically.</li>
+      <li>They type the missing words.</li>
+      <li>They can replay each sentence as many times as they want.</li>
+      <li>Press Enter or click <b>Next</b> to advance.</li>
       <li>At the end, they see their score.</li>
     </ol>
   </div>
@@ -324,18 +312,15 @@ video, iframe.video-player{
 const WORKER = window.WORKER_URL;
 
 // Video state
-let videoMode = null;          // "mp4" | "bunny"
+let videoMode = null;
 let bunnyGuid = null;
 let bunnyDirectUrl = null;
 let bunnyEmbedUrl = null;
 let externalVideoUrl = null;
 let builderPlayer = null;
 
-// Transcript state — array of sentences
-// Each sentence = { words: [{text, time, isGap}], startTime, endTime, originalText }
+// Transcript state
 let sentences = [];
-
-// Edit mode state
 let editModeActive = false;
 
 // ============================================================
@@ -388,7 +373,10 @@ async function handleFileUpload(file) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: file.name })
     });
-    if (!createRes.ok) throw new Error("Create failed: " + createRes.status);
+    if (!createRes.ok) {
+      const errBody = await createRes.text();
+      throw new Error("Create failed: " + createRes.status + " " + errBody);
+    }
     const created = await createRes.json();
     bunnyGuid = created.guid;
 
@@ -405,7 +393,7 @@ async function handleFileUpload(file) {
       };
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) resolve();
-        else reject(new Error("Upload failed: " + xhr.status));
+        else reject(new Error("Upload failed: " + xhr.status + " " + xhr.responseText));
       };
       xhr.onerror = () => reject(new Error("Network error"));
       xhr.send(file);
@@ -423,7 +411,6 @@ async function handleFileUpload(file) {
     showVideoPlayer();
     revealStep("step2Card");
 
-    // Wait for Bunny to be ready, then auto-transcribe
     await waitForBunnyReady();
     await autoTranscribe();
 
@@ -444,7 +431,6 @@ async function waitForBunnyReady() {
     try {
       const head = await fetch(bunnyDirectUrl, { method: "HEAD" });
       if (head.ok) {
-        // Switch to direct video element
         const box = document.getElementById("videoBox");
         box.innerHTML = '<video id="builderPlayer" class="video-player" controls crossorigin="anonymous"><source src="' +
           bunnyDirectUrl + '" type="video/mp4"></video>';
@@ -495,14 +481,6 @@ function getTime() {
   return 0;
 }
 
-function seekTo(time) {
-  if (!builderPlayer) return;
-  if (builderPlayer.currentTime !== undefined) {
-    builderPlayer.currentTime = time;
-    builderPlayer.play();
-  }
-}
-
 function revealStep(id) {
   document.getElementById(id).style.display = "block";
 }
@@ -521,13 +499,9 @@ async function autoTranscribe() {
   const status = document.getElementById("transcribeStatus");
 
   let audioUrl;
-  if (videoMode === "bunny") {
-    audioUrl = bunnyDirectUrl;
-  } else if (videoMode === "mp4") {
-    audioUrl = externalVideoUrl;
-  } else {
-    return;
-  }
+  if (videoMode === "bunny") audioUrl = bunnyDirectUrl;
+  else if (videoMode === "mp4") audioUrl = externalVideoUrl;
+  else return;
 
   status.className = "status";
   status.innerText = "🎙️ Transcribing... (30-90 seconds)";
@@ -538,11 +512,14 @@ async function autoTranscribe() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ audioUrl })
     });
-    if (!res.ok) throw new Error("Transcribe failed: " + res.status);
+    if (!res.ok) {
+      const errBody = await res.text();
+      throw new Error("Transcribe failed: " + res.status + " " + errBody);
+    }
     const data = await res.json();
 
     if (data.pending && data.jobId) {
-      status.innerText = "⏳ Still processing — checking every few seconds...";
+      status.innerText = "⏳ Transcribing — checking every few seconds...";
       await pollTranscriptJob(data.jobId);
     } else {
       buildSentencesFromTranscript(data);
@@ -556,7 +533,7 @@ async function autoTranscribe() {
 
 async function pollTranscriptJob(jobId) {
   const status = document.getElementById("transcribeStatus");
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 45; i++) {
     await new Promise(r => setTimeout(r, 4000));
     try {
       const res = await fetch(WORKER + "/transcribe-status?jobId=" + jobId);
@@ -571,8 +548,28 @@ async function pollTranscriptJob(jobId) {
 
 // ============================================================
 // 🧩 SENTENCE PARSER
-// Splits transcript into sentences, attaches per-word timestamps
 // ============================================================
+function splitIntoSentences(text) {
+  const abbrevs = ["mr","mrs","ms","dr","st","jr","sr","vs","etc","e.g","i.e"];
+  const out = [];
+  let buffer = "";
+  for (let i = 0; i < text.length; i++) {
+    buffer += text[i];
+    if (/[.!?]/.test(text[i])) {
+      const lower = buffer.trim().toLowerCase();
+      const lastWord = lower.split(/\s+/).pop().replace(/[.!?]$/, "");
+      const isAbbrev = abbrevs.indexOf(lastWord) >= 0;
+      const next = text[i + 1];
+      if (!isAbbrev && (next === " " || next === "\n" || i === text.length - 1 || next === undefined)) {
+        if (buffer.trim()) out.push(buffer.trim());
+        buffer = "";
+      }
+    }
+  }
+  if (buffer.trim()) out.push(buffer.trim());
+  return out;
+}
+
 function buildSentencesFromTranscript(data) {
   const status = document.getElementById("transcribeStatus");
   const text = data.text || "";
@@ -584,27 +581,9 @@ function buildSentencesFromTranscript(data) {
     return;
   }
 
-  // Split full text into sentences using punctuation
-  // Avoids splitting on common abbreviations
-  const abbrevs = ["mr","mrs","ms","dr","st","jr","sr","vs","etc","e.g","i.e"];
-  const rawSentences = [];
-  let buffer = "";
-  for (let i = 0; i < text.length; i++) {
-    buffer += text[i];
-    if (/[.!?]/.test(text[i])) {
-      const lower = buffer.trim().toLowerCase();
-      const lastWord = lower.split(/\s+/).pop().replace(/[.!?]$/, "");
-      const isAbbrev = abbrevs.indexOf(lastWord) >= 0;
-      const next = text[i + 1];
-      if (!isAbbrev && (next === " " || next === "\n" || i === text.length - 1 || next === undefined)) {
-        rawSentences.push(buffer.trim());
-        buffer = "";
-      }
-    }
-  }
-  if (buffer.trim()) rawSentences.push(buffer.trim());
+  const rawSentences = splitIntoSentences(text);
 
-  // Attach timestamps by aligning each word in a sentence to the AssemblyAI words array
+  // Attach timestamps by aligning each token to the words array
   let wordIdx = 0;
   sentences = rawSentences.map(rawText => {
     const tokens = rawText.split(/\s+/).filter(Boolean);
@@ -615,7 +594,6 @@ function buildSentencesFromTranscript(data) {
       const cleanToken = token.toLowerCase().replace(/[^\w']/g, "");
       let matchedTime = null;
 
-      // Search forward in words array for a match
       for (let j = wordIdx; j < Math.min(wordIdx + 5, words.length); j++) {
         const w = words[j];
         const cleanW = (w.text || "").toLowerCase().replace(/[^\w']/g, "");
@@ -662,13 +640,13 @@ function buildSentencesFromTranscript(data) {
 }
 
 // ============================================================
-// ✏️ TRANSCRIPT EDITOR — Editable mode
+// ✏️ EDIT TEXT MODE
 // ============================================================
 function toggleEditMode() {
   editModeActive = !editModeActive;
   const container = document.getElementById("editModeContainer");
   const textarea = document.getElementById("transcriptEditArea");
-  
+
   if (editModeActive) {
     container.style.display = "block";
     const fullText = sentences.map(s => s.originalText).join(" ");
@@ -682,42 +660,24 @@ function toggleEditMode() {
 function applyTranscriptEdit() {
   const newText = document.getElementById("transcriptEditArea").value.trim();
   if (!newText) { alert("Transcript cannot be empty."); return; }
-  
-  // Re-parse sentences from edited text
-  const status = document.getElementById("transcribeStatus");
-  const abbrevs = ["mr","mrs","ms","dr","st","jr","sr","vs","etc","e.g","i.e"];
-  const rawSentences = [];
-  let buffer = "";
-  
-  for (let i = 0; i < newText.length; i++) {
-    buffer += newText[i];
-    if (/[.!?]/.test(newText[i])) {
-      const lower = buffer.trim().toLowerCase();
-      const lastWord = lower.split(/\s+/).pop().replace(/[.!?]$/, "");
-      const isAbbrev = abbrevs.indexOf(lastWord) >= 0;
-      const next = newText[i + 1];
-      if (!isAbbrev && (next === " " || next === "\n" || i === newText.length - 1 || next === undefined)) {
-        rawSentences.push(buffer.trim());
-        buffer = "";
-      }
-    }
-  }
-  if (buffer.trim()) rawSentences.push(buffer.trim());
 
-  // Rebuild sentences without timestamps (preserve timing from original if possible)
+  const rawSentences = splitIntoSentences(newText);
+
+  // Rebuild sentences, preserving timing where possible
+  const oldSentences = sentences;
   sentences = rawSentences.map((rawText, idx) => {
     const tokens = rawText.split(/\s+/).filter(Boolean);
     const sentenceWords = tokens.map((token, wi) => ({
       text: token,
-      time: idx * 5 + wi * 0.5,
+      time: 0,
       isGap: false
     }));
 
-    const oldSent = sentences[idx];
+    const oldSent = oldSentences[idx];
     return {
       words: sentenceWords,
-      startTime: oldSent ? oldSent.startTime : idx * 5,
-      endTime: oldSent ? oldSent.endTime : (idx + 1) * 5,
+      startTime: oldSent ? oldSent.startTime : (idx * 5),
+      endTime: oldSent ? oldSent.endTime : ((idx + 1) * 5),
       originalText: rawText
     };
   });
@@ -733,7 +693,7 @@ function cancelTranscriptEdit() {
 }
 
 // ============================================================
-// 📝 TRANSCRIPT RENDERER & CONTEXT MENU
+// 📝 TRANSCRIPT RENDER & CLICK-TO-TOGGLE GAPS
 // ============================================================
 function renderTranscript() {
   const box = document.getElementById("transcriptBox");
@@ -741,82 +701,37 @@ function renderTranscript() {
 
   box.innerHTML = sentences.map((s, si) => {
     const wordsHtml = s.words.map((w, wi) => {
-      if (w.isGap) {
-        return '<span class="transcript-word gap" data-sent="' + si + '" data-word="' + wi + '">___</span>';
-      }
-      return '<span class="transcript-word" data-sent="' + si + '" data-word="' + wi + '">' +
+      const cls = "transcript-word" + (w.isGap ? " gap" : "");
+      return '<span class="' + cls + '" data-sent="' + si + '" data-word="' + wi + '">' +
         escapeHtml(w.text) + '</span>';
     }).join(" ");
-    return '<div class="transcript-sentence" data-sentence="' + si + '">' + wordsHtml + '</div>';
+    return '<div class="transcript-sentence">' + wordsHtml + '</div>';
   }).join("");
-  
-  // Attach context menu listeners to each word
-  document.querySelectorAll(".transcript-word").forEach(span => {
-    span.removeEventListener("contextmenu", handleWordContextMenu);
-    span.addEventListener("contextmenu", handleWordContextMenu);
-  });
 }
 
-function handleWordContextMenu(event) {
-  event.preventDefault();
-  event.stopPropagation();
-  
-  const span = event.currentTarget;
-  const sentIdx = parseInt(span.getAttribute("data-sent"));
-  const wordIdx = parseInt(span.getAttribute("data-word"));
-  
+// Single delegated click handler — works on touch and desktop
+document.addEventListener("click", function (e) {
+  const target = e.target;
+  if (!target.classList || !target.classList.contains("transcript-word")) return;
+
+  const sentIdx = parseInt(target.getAttribute("data-sent"));
+  const wordIdx = parseInt(target.getAttribute("data-word"));
   if (isNaN(sentIdx) || isNaN(wordIdx)) return;
-  
-  const word = sentences[sentIdx].words[wordIdx];
+
+  const word = sentences[sentIdx] && sentences[sentIdx].words[wordIdx];
   if (!word) return;
-  
+
+  // Skip pure punctuation
   const clean = word.text.replace(/[^\w']/g, "");
   if (!clean) return;
 
-  const menu = document.getElementById("contextMenu");
-  menu.innerHTML = "";
-  
-  if (word.isGap) {
-    const item = document.createElement("div");
-    item.className = "context-menu-item";
-    item.innerHTML = "❌ Remove gap";
-    item.onclick = () => {
-      word.isGap = false;
-      renderTranscript();
-      hideContextMenu();
-    };
-    menu.appendChild(item);
-  } else {
-    const item = document.createElement("div");
-    item.className = "context-menu-item";
-    item.innerHTML = "➕ Add gap";
-    item.onclick = () => {
-      word.isGap = true;
-      renderTranscript();
-      hideContextMenu();
-    };
-    menu.appendChild(item);
-  }
-
-  menu.classList.add("show");
-  menu.style.left = event.pageX + "px";
-  menu.style.top = event.pageY + "px";
-}
-
-function hideContextMenu() {
-  const menu = document.getElementById("contextMenu");
-  menu.classList.remove("show");
-}
-
-document.addEventListener("click", () => hideContextMenu());
-document.addEventListener("contextmenu", (e) => {
-  if (!e.target.classList.contains("transcript-word")) {
-    hideContextMenu();
-  }
+  word.isGap = !word.isGap;
+  // Update only this word's class instead of full re-render (faster, no flicker)
+  target.classList.toggle("gap");
 });
 
 // ============================================================
-// ✨ MAKE IT HAPPEN — AI gap suggestion by level
+// ✨ MAKE IT HAPPEN — AI gap suggestion
 // ============================================================
 async function makeItHappen() {
   if (!sentences.length) { alert("No transcript yet."); return; }
@@ -826,7 +741,6 @@ async function makeItHappen() {
   btn.disabled = true;
   btn.innerText = "⏳ Working magic...";
 
-  // Build a plain-text transcript to send to AI
   const transcript = sentences.map(s => s.originalText).join(" ");
 
   try {
@@ -835,38 +749,37 @@ async function makeItHappen() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ transcript, level })
     });
-    if (!res.ok) throw new Error("AI error: " + res.status);
+    if (!res.ok) {
+      const errBody = await res.text();
+      throw new Error("AI error: " + res.status + " " + errBody);
+    }
     const data = await res.json();
     if (!data.sections || !Array.isArray(data.sections)) throw new Error("Invalid AI response");
 
-    // For each AI section, find which words to mark as gaps
     applyAISuggestedGaps(data.sections);
-
-    btn.innerText = "✨ Make it happen";
-    btn.disabled = false;
-
-    // Scroll to transcript so user sees the result
     document.getElementById("step3Card").scrollIntoView({ behavior: "smooth" });
+
   } catch (err) {
     console.error(err);
     alert("❌ " + err.message);
+  } finally {
     btn.innerText = "✨ Make it happen";
     btn.disabled = false;
   }
 }
 
 function applyAISuggestedGaps(aiSections) {
-  // Collect the answer words AI chose
-  const targetWords = [];
+  // Collect target words from AI response
+  const targets = [];
   aiSections.forEach(sec => {
     (sec.answers || []).forEach(a => {
       const cleaned = (a || "").toLowerCase().replace(/[^\w']/g, "");
-      if (cleaned) targetWords.push(cleaned);
+      if (cleaned) targets.push(cleaned);
     });
   });
 
-  // Mark the first matching occurrence of each target word as a gap
-  targetWords.forEach(target => {
+  // For each target, mark first matching non-gap occurrence as gap
+  targets.forEach(target => {
     for (const sentence of sentences) {
       let found = false;
       for (const word of sentence.words) {
@@ -885,34 +798,29 @@ function applyAISuggestedGaps(aiSections) {
 }
 
 // ============================================================
-// 📦 BUILD LESSON DATA & SHARE
+// 📦 BUILD LESSON & SHARE
 // ============================================================
 function buildLesson() {
   const lessonSentences = sentences
-    .map(s => {
-      return {
-        words: s.words.map(w => ({ text: w.text, isGap: w.isGap })),
-        startTime: s.startTime,
-        endTime: s.endTime
-      };
-    })
+    .map(s => ({
+      words: s.words.map(w => ({ text: w.text, isGap: w.isGap })),
+      startTime: s.startTime,
+      endTime: s.endTime
+    }))
     .filter(s => s.words.length > 0);
 
   let videoUrl = "";
   if (videoMode === "bunny" && bunnyDirectUrl) videoUrl = bunnyDirectUrl;
   else if (videoMode === "mp4") videoUrl = externalVideoUrl;
 
-  return {
-    videoUrl,
-    sentences: lessonSentences
-  };
+  return { videoUrl, sentences: lessonSentences };
 }
 
 function previewExercise() {
   const lesson = buildLesson();
   if (!lesson.videoUrl) { alert("Add a video first."); return; }
   const hasGaps = lesson.sentences.some(s => s.words.some(w => w.isGap));
-  if (!hasGaps) { alert("No gaps yet. Click 'Make it happen' or right-click words to add gaps first."); return; }
+  if (!hasGaps) { alert("No gaps yet. Click words or use 'Make it happen' first."); return; }
   startStudent(lesson, true);
 }
 
@@ -920,9 +828,9 @@ function generateLink() {
   const lesson = buildLesson();
   if (!lesson.videoUrl) { alert("Add a video first."); return; }
   const hasGaps = lesson.sentences.some(s => s.words.some(w => w.isGap));
-  if (!hasGaps) { alert("No gaps yet. Click 'Make it happen' or right-click words to add gaps first."); return; }
+  if (!hasGaps) { alert("No gaps yet. Click words or use 'Make it happen' first."); return; }
 
-  // Strip any extra fields to keep URL short
+  // Compact format — uses short keys to keep URL short
   const slim = {
     videoUrl: lesson.videoUrl,
     sentences: lesson.sentences.map(s => ({
@@ -963,7 +871,6 @@ let studentState = {
 };
 
 function startStudent(rawLesson, previewMode) {
-  // Decode compact format if needed
   const lesson = normalizeLesson(rawLesson);
   if (!lesson.sentences || !lesson.sentences.length) {
     document.getElementById("app").innerHTML =
@@ -1010,18 +917,15 @@ function startStudent(rawLesson, previewMode) {
 }
 
 function exitPreview() {
-  // Restore the builder interface
   location.reload();
 }
 
 function normalizeLesson(raw) {
-  // Handle both compact and full format
   if (!raw.sentences) return raw;
   return {
     videoUrl: raw.videoUrl,
     sentences: raw.sentences.map(s => {
       if (s.words) {
-        // Already in object form (preview mode or full link)
         return {
           words: s.words.map(w => {
             if (typeof w === "object" && "text" in w) return { text: w.text, isGap: !!w.isGap };
@@ -1061,7 +965,6 @@ function loadSentence(idx) {
   const sentence = lesson.sentences[idx];
   const display = document.getElementById("sentenceDisplay");
 
-  // Render sentence with input boxes for gaps
   const html = sentence.words.map((w, wi) => {
     if (w.isGap) {
       const id = "ans_" + idx + "_" + wi;
@@ -1075,10 +978,8 @@ function loadSentence(idx) {
   display.innerHTML = html;
   document.getElementById("studentStatus").innerText = "";
 
-  // Auto-play this sentence
   playCurrentSentence();
 
-  // Focus first gap input
   setTimeout(() => {
     const firstInput = display.querySelector("input.gap-input");
     if (firstInput) firstInput.focus();
@@ -1112,7 +1013,6 @@ function trackAnswer(sentIdx, wordIdx, value) {
 
 function handleGapKey(e) {
   if (e.key === "Enter" || e.key === "Tab") {
-    // Find next gap input on the same sentence; if none, advance
     const inputs = Array.from(document.querySelectorAll("input.gap-input"));
     const idx = inputs.indexOf(e.target);
     if (idx >= 0 && idx < inputs.length - 1) {
@@ -1128,8 +1028,7 @@ function handleGapKey(e) {
 function checkCurrentSentence() {
   const idx = studentState.currentIdx;
   const sentence = studentState.lesson.sentences[idx];
-  let allCorrect = true;
-  let hasGaps = false;
+  let allCorrect = true, hasGaps = false;
 
   sentence.words.forEach((w, wi) => {
     if (w.isGap) {
@@ -1140,7 +1039,6 @@ function checkCurrentSentence() {
       const isCorrect = userClean === correct;
       studentState.results[idx + "_" + wi] = isCorrect;
 
-      // Visual feedback
       const input = document.getElementById("ans_" + idx + "_" + wi);
       if (input) {
         input.classList.remove("correct", "incorrect");
@@ -1154,8 +1052,7 @@ function checkCurrentSentence() {
 }
 
 function nextSentence() {
-  const result = checkCurrentSentence();
-  // Advance regardless of correctness (lenient mode + visible feedback)
+  checkCurrentSentence();
   setTimeout(() => {
     loadSentence(studentState.currentIdx + 1);
   }, 600);
@@ -1176,15 +1073,44 @@ function showFinalScore() {
   });
 
   const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
-
   const studentCard = document.getElementById("studentCard");
   studentCard.innerHTML =
     '<div class="score-card">' +
-      '<h2>✅ Finished!</h2>' +
+      '<h2>🎉 Finished!</h2>' +
       '<div class="score-big">' + pct + '%</div>' +
       '<p><strong>' + correct + ' out of ' + total + '</strong> correct</p>' +
+      '<button class="primary-blue" onclick="restartLesson()">🔁 Try again</button>' +
+      '<button class="success" onclick="showAnswers()">👁 Show answers</button>' +
+      '<div id="answersReview" style="margin-top:24px;text-align:left;display:none;"></div>' +
     '</div>';
 }
+
+function restartLesson() {
+  startStudent(studentState.lesson, studentState.isPreview);
+}
+
+function showAnswers() {
+  const review = document.getElementById("answersReview");
+  if (!review) return;
+  review.style.display = "block";
+
+  const html = studentState.lesson.sentences.map((s, si) => {
+    const sentenceHtml = s.words.map((w, wi) => {
+      if (w.isGap) {
+        const userVal = (studentState.answers[si + "_" + wi] || "").trim() || "(blank)";
+        const isCorrect = studentState.results[si + "_" + wi];
+        const color = isCorrect ? "#10b981" : "#ef4444";
+        return '<b style="color:' + color + ';">' + escapeHtml(w.text) + '</b>' +
+          (isCorrect ? "" : ' <small style="color:#999;">(you: ' + escapeHtml(userVal) + ')</small>');
+      }
+      return escapeHtml(w.text);
+    }).join(" ");
+    return '<div style="padding:8px 0;border-bottom:1px solid #eee;">' + sentenceHtml + '</div>';
+  }).join("");
+
+  review.innerHTML = '<h3 style="text-align:left;">Answer review</h3>' + html;
+}
 </script>
+
 </body>
 </html>
