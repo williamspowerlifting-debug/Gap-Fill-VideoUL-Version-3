@@ -917,17 +917,16 @@ function startStudent(rawLesson, previewMode) {
 }
 
 function exitPreview() {
-  // Hide student view, show builder again — without losing state
-  const studentEl = document.getElementById("studentApp");
-  if (studentEl) studentEl.style.display = "none";
-
   const app = document.getElementById("app");
-  if (app) app.style.display = "block";
 
-  // Stop video playback
+  if (window._builderHTML) {
+    app.innerHTML = window._builderHTML;
+  }
+
   if (studentState.videoEl) {
     try { studentState.videoEl.pause(); } catch (e) {}
   }
+
   clearInterval(studentState.stopTimer);
 }
 
