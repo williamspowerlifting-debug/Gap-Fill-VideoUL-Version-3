@@ -926,49 +926,6 @@ function startStudent(rawLesson, previewMode) {
   const groupedSentences = groupSentencesForStudent(lesson.sentences);
   const finalLesson = { videoUrl: lesson.videoUrl, sentences: groupedSentences };
 
-  studentState = {
-    lesson: finalLesson,
-    currentIdx: 0,
-    videoEl: null,
-    stopTimer: null,
-    answers: {},
-    results: {},
-    finished: false,
-    isPreview: previewMode || false
-  };
-
-  if (previewMode) {
-    // Preserve the builder — hide it, show student view in an overlay container
-    const app = document.getElementById("app");
-    app.style.display = "none";
-
-    // Create or reuse student container
-    let studentEl = document.getElementById("studentApp");
-    if (!studentEl) {
-      studentEl = document.createElement("div");
-      studentEl.id = "studentApp";
-      studentEl.className = "container";
-      document.body.appendChild(studentEl);
-    }
-    studentEl.style.display = "block";
-
-    studentEl.innerHTML =
-      '<div style="margin-bottom:14px;">' +
-        '<button class="secondary" onclick="exitPreview()">⬅ Back to editor</button>' +
-      '</div>' +
-      '<h1>🎧 Listening Exercise</h1>' +
-      buildStudentMarkup(finalLesson);
-  } else {
-    // Real student view — replace whole app
-    document.getElementById("app").innerHTML =
-      '<h1>🎧 Listening Exercise</h1>' + buildStudentMarkup(finalLesson);
-  }
-
-  studentState.videoEl = document.getElementById("studentVideo");
-  renderProgressDots();
-  loadSentence(0);
-}
-
 function buildStudentMarkup(lesson) {
   return '<div class="card">' +
       '<video id="studentVideo" class="video-player" controls crossorigin="anonymous">' +
