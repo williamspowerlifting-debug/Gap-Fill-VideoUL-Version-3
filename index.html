@@ -725,34 +725,91 @@ function toggleEditMode() {
 
 function applyTranscriptEdit() {
   const newText = document.getElementById("transcriptEditArea").value.trim();
-  if (!newText) { alert("Transcript cannot be empty."); return; }
+
+  if (!newText) {
+    alert("Transcript cannot be empty.");
+    return;
+  }
+
+  // ============================================================
+  // Preserve existing gaps
+  // ============================================================
+
+  // Build a queue of existing gap words
+  // Example:
+  // { "weather": 2, "beautiful": 1 }
+  const existingGapCounts = {};
+
+  sentences.forEach(sentence => {
+    sentence.words.forEach(word => {
+      if (word.isGap) {
+        const clean = word.text
+          .toLowerCase()
+          .replace(/[^\w']/g, "");
+
+        if (clean) {
+          existingGapCounts[clean] =
+            (existingGapCounts[clean] || 0) + 1;
+        }
+      }
+    });
+  });
 
   const rawSentences = splitIntoSentences(newText);
 
-  // Rebuild sentences, preserving timing where possible
+  // Keep old timing if possible
   const oldSentences = sentences;
+
   sentences = rawSentences.map((rawText, idx) => {
     const tokens = rawText.split(/\s+/).filter(Boolean);
-    const sentenceWords = tokens.map(token => ({
-      text: token,
-      time: 0,
-      isGap: false
-    }));
+
+    const sentenceWords = tokens.map(token => {
+
+      const clean = token
+        .toLowerCase()
+        .replace(/[^\w']/g, "");
+
+      let shouldBeGap = false;
+
+      // Reapply gaps where possible
+      if (
+        clean &&
+        existingGapCounts[clean] &&
+        existingGapCounts[clean] > 0
+      ) {
+        shouldBeGap = true;
+        existingGapCounts[clean]--;
+      }
+
+      return {
+        text: token,
+        time: 0,
+        isGap: shouldBeGap
+      };
+    });
 
     const oldSent = oldSentences[idx];
+
     return {
       words: sentenceWords,
-      startTime: oldSent ? oldSent.startTime : (idx * 5),
-      endTime: oldSent ? oldSent.endTime : ((idx + 1) * 5),
+      startTime: oldSent
+        ? oldSent.startTime
+        : (idx * 5),
+
+      endTime: oldSent
+        ? oldSent.endTime
+        : ((idx + 1) * 5),
+
       originalText: rawText
     };
   });
 
   editModeActive = false;
+
   document.getElementById("editModeContainer").style.display = "none";
+
   renderTranscript();
 }
-
 function cancelTranscriptEdit() {
   editModeActive = false;
   document.getElementById("editModeContainer").style.display = "none";
