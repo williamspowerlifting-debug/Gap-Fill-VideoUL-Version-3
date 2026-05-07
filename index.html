@@ -1040,9 +1040,10 @@ function buildStudentMarkup(lesson) {
     '<div class="card student-card" id="studentCard">' +
       '<div class="progress-dots" id="progressDots"></div>' +
       '<div class="sentence-display" id="sentenceDisplay"></div>' +
-      '<div style="text-align:center;margin-top:18px;">' +
-        '<button class="secondary" onclick="replayCurrent()">🔁 Replay</button>' +
-        '<button class="primary-blue" onclick="nextSentence()" id="nextBtn">Next ➡</button>' +
+      <div style="text-align:center;margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' +
+      '<button class="secondary" onclick="previousSentence()" id="prevBtn">⬅ Previous</button>' +
+      '<button class="secondary" onclick="replayCurrent()">🔁 Replay</button>' +
+      '<button class="primary-blue" onclick="nextSentence()" id="nextBtn">Next ➡</button>' +
       '</div>' +
       '<div class="status" id="studentStatus" style="text-align:center;"></div>' +
     '</div>';
@@ -1111,7 +1112,10 @@ function loadSentence(idx) {
 
   studentState.currentIdx = idx;
   renderProgressDots();
-
+const prevBtn = document.getElementById("prevBtn");
+if (prevBtn) {
+  prevBtn.disabled = idx === 0;
+}
   const sentence = lesson.sentences[idx];
   const display = document.getElementById("sentenceDisplay");
 
@@ -1172,7 +1176,11 @@ function playCurrentSentence() {
 function replayCurrent() {
   playCurrentSentence();
 }
+function previousSentence() {
+  if (studentState.currentIdx <= 0) return;
 
+  loadSentence(studentState.currentIdx - 1);
+}
 function trackAnswer(sentIdx, wordIdx, value) {
   studentState.answers[sentIdx + "_" + wordIdx] = value;
 }
