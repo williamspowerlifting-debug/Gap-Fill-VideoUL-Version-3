@@ -890,32 +890,68 @@ function previewExercise() {
   startStudent(lesson, true);
 }
 
-function generateLink() {
+async function generateLink() {
+
   const lesson = buildLesson();
-  if (!lesson.videoUrl) { alert("Add a video first."); return; }
-  const hasGaps = lesson.sentences.some(s => s.words.some(w => w.isGap));
-  if (!hasGaps) { alert("No gaps yet. Click words or use 'Make it happen' first."); return; }
 
-  // Compact format — uses short keys to keep URL short
-  const slim = {
-    videoUrl: lesson.videoUrl,
-    sentences: lesson.sentences.map(s => ({
-      words: s.words.map(w => w.isGap ? { t: w.text, g: 1 } : { t: w.text }),
-      s: Math.round(s.startTime * 100) / 100,
-      e: Math.round(s.endTime * 100) / 100
-    }))
-  };
+  if (!lesson.videoUrl) {
+    alert("Add a video first.");
+    return;
+  }
 
-  const encoded = encodeURIComponent(JSON.stringify(slim));
-  const link = location.origin + location.pathname + "?data=" + encoded;
+  const hasGaps = lesson.sentences.some(
+    s => s.words.some(w => w.isGap)
+  );
 
-  const linkBox = document.getElementById("link");
-  linkBox.className = "status success";
-  linkBox.innerHTML =
-    '<b>✅ Student Link:</b><br>' +
-    '<a href="' + link + '" target="_blank" style="word-break:break-all;">' + link + '</a>' +
-    '<br><button class="primary-blue" style="margin-top:8px;" onclick="copyLink()">📋 Copy Link</button>';
-  window._lastLink = link;
+  if (!hasGaps) {
+    alert("No gaps yet.");
+    return;
+  }
+
+  try {
+
+    const res = await fetch(
+      WORKER + "/save-lesson",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(lesson)
+      }
+    );
+
+    if (!res.ok) {
+      throw new Error("Failed to save lesson");
+    }
+
+    const data = await res.json();
+
+    const link =
+      location.origin +
+      location.pathname +
+      "?lesson=" +
+      data.id;
+
+    const linkBox = document.getElementById("link");
+
+    linkBox.className = "status success";
+
+    linkBox.innerHTML =
+      '<b>✅ Student Link:</b><br>' +
+      '<a href="' + link + '" target="_blank">' +
+      link +
+      '</a>' +
+      '<br><button class="primary-blue" style="margin-top:8px;" onclick="copyLink()">📋 Copy Link</button>';
+
+    window._lastLink = link;
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert("❌ " + err.message);
+  }
 }
 
 function copyLink() {
@@ -1247,16 +1283,62 @@ function showAnswers() {
 // 🔁 Routing — student vs builder
 // Must run AFTER all functions (startStudent, normalizeLesson, etc.) are defined.
 // ============================================================
-(function () {
+(async function () {
+
   const params = new URLSearchParams(location.search);
+
+  // ============================================
+  // NEW: Saved lessons
+  // ============================================
+
+  const lessonId = params.get("lesson");
+
+  if (lessonId) {
+
+    try {
+
+      const res = await fetch(
+        WORKER + "/lesson/" + lessonId
+      );
+
+      if (!res.ok) {
+        throw new Error("Lesson not found");
+      }
+
+      const lesson = await res.json();
+
+      startStudent(lesson);
+
+      return;
+
+    } catch (e) {
+
+      document.getElementById("app").innerHTML =
+        '<div class="card"><h2>⚠️ Lesson not found.</h2></div>';
+
+      return;
+    }
+  }
+
+  // ============================================
+  // OLD inline links still supported
+  // ============================================
+
   const rawData = params.get("data");
+
   if (rawData) {
-    try { startStudent(JSON.parse(rawData)); }
-    catch (e) {
+
+    try {
+
+      startStudent(JSON.parse(rawData));
+
+    } catch (e) {
+
       document.getElementById("app").innerHTML =
         '<div class="card"><h2>⚠️ Invalid lesson link.</h2></div>';
     }
   }
+
 })();
 </script>
 
