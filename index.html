@@ -719,7 +719,43 @@ function groupSentencesForStudent(rawSentences) {
 
   // leftover short sentences at the end
   flushPending();
+    // ------------------------------------------------
+  // FINAL PASS:
+  // Merge any no-gap groups forward into the next
+  // group that contains gaps
+  // ------------------------------------------------
+  const cleanedGroups = [];
 
+  for (let i = 0; i < groups.length; i++) {
+    const current = groups[i];
+
+    const hasGap = current.words.some(w => w.isGap);
+
+    // If current group has gaps, keep it
+    if (hasGap) {
+      cleanedGroups.push(current);
+      continue;
+    }
+
+    // No gaps → merge into next group if possible
+    if (i < groups.length - 1) {
+      const next = groups[i + 1];
+
+      next.words = [...current.words, ...next.words];
+      next.startTime = current.startTime;
+    } else {
+      // last group with no gaps
+      // merge backward instead
+      if (cleanedGroups.length > 0) {
+        const prev = cleanedGroups[cleanedGroups.length - 1];
+
+        prev.words.push(...current.words);
+        prev.endTime = current.endTime;
+      }
+    }
+  }
+
+  return cleanedGroups;
   return groups;
 }
 
