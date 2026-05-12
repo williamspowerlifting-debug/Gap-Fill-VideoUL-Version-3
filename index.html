@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Listening Exercise Builder</title>
 
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <script>
   // 🔐 Worker URL — all API keys are hidden in Cloudflare Secrets
   window.WORKER_URL = "https://gapfill-ai.williamspowerlifting.workers.dev";
@@ -81,6 +82,12 @@ video, iframe.video-player{
   user-select:none;
   -webkit-user-select:none;
 }
+.transcript-box.edit-mode{
+  border:2px solid #4f46e5;
+  user-select:text;
+  -webkit-user-select:text;
+  cursor:text;
+}
 .transcript-word{
   display:inline-block;padding:2px 6px;margin:1px;
   border-radius:4px;cursor:pointer;
@@ -101,14 +108,22 @@ video, iframe.video-player{
   padding:10px 14px;border-radius:6px;margin-bottom:12px;font-size:14px;color:#1e40af;
 }
 
-/* Edit-text mode */
-.transcript-edit-area{
-  width:100%;min-height:160px;padding:14px;border:2px solid #4f46e5;
-  border-radius:10px;font-family:inherit;font-size:15px;
-  box-sizing:border-box;line-height:1.6;
+/* Inline edit mode */
+.transcript-edit-header{
+  display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;
+  padding-bottom:10px;border-bottom:1px solid #e5e7eb;
 }
-.transcript-edit-buttons{
-  display:flex;gap:8px;margin-top:10px;
+.sentence-edit-row{margin-bottom:6px;}
+.sentence-edit-textarea{
+  width:100%;min-height:38px;padding:8px 10px;
+  border:1px solid #d1d5db;border-radius:8px;
+  font-family:inherit;font-size:15px;box-sizing:border-box;
+  line-height:1.6;resize:none;overflow:hidden;
+  transition:border-color 0.2s, box-shadow 0.2s;
+}
+.sentence-edit-textarea:focus{
+  border-color:#4f46e5;outline:none;
+  box-shadow:0 0 0 3px rgba(79,70,229,0.12);
 }
 
 /* Settings row */
@@ -146,30 +161,27 @@ video, iframe.video-player{
 .student-card{padding:24px;}
 .sentence-display{
   font-size:22px;
-  line-height:1.4;        /* tighter */
-  text-align:left;        /* more natural reading */
+  line-height:1.4;
+  text-align:left;
   padding:24px;
   background:#f9fafb;
   border-radius:14px;
   min-height:80px;
-
-  display:flex;           /* 👈 key */
-  flex-wrap:wrap;         /* allow wrapping nicely */
-  gap:6px;                /* spacing between words */
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  align-items:center;
 }
 .gap-input{
   display:inline-block;
   width:120px;
   height:32px;
-
   border:none;
   border-bottom:2px solid #4f46e5;
-
   font-size:18px;
   text-align:center;
   outline:none;
   background:white;
-
   margin:0 2px;
   vertical-align:baseline;
   font-family:inherit;
@@ -177,6 +189,47 @@ video, iframe.video-player{
 .gap-input:focus{border-bottom-color:#10b981;}
 .gap-input.correct{border-bottom-color:#10b981;background:#ecfdf5;color:#065f46;}
 .gap-input.incorrect{border-bottom-color:#ef4444;background:#fef2f2;color:#991b1b;}
+
+/* Answer feedback elements */
+.feedback-correct{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:4px 12px;
+  background:#ecfdf5;
+  color:#065f46;
+  border:2px solid #10b981;
+  border-radius:8px;
+  font-weight:700;
+  font-size:18px;
+}
+.feedback-incorrect{
+  display:inline-flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+}
+.feedback-correct-ans{
+  font-size:13px;
+  color:#065f46;
+  font-weight:700;
+  background:#ecfdf5;
+  padding:2px 8px;
+  border-radius:4px;
+  border:1px solid #10b981;
+  white-space:nowrap;
+}
+.feedback-wrong-ans{
+  font-size:16px;
+  color:#991b1b;
+  font-weight:600;
+  background:#fef2f2;
+  padding:3px 10px;
+  border-radius:6px;
+  border:2px solid #ef4444;
+  text-decoration:line-through;
+  white-space:nowrap;
+}
 
 .progress-dots{
   display:flex;justify-content:center;gap:6px;margin:16px 0;flex-wrap:wrap;
@@ -247,13 +300,6 @@ video, iframe.video-player{
       💡 <b>Tap or click any word</b> to mark it as a gap. Tap a yellow word to remove the gap.
     </div>
     <button class="secondary" onclick="toggleEditMode()" id="editModeBtn" style="margin-bottom:12px;">✏️ Edit Text</button>
-    <div id="editModeContainer" style="display:none;margin-bottom:12px;">
-      <textarea id="transcriptEditArea" class="transcript-edit-area" placeholder="Edit the transcript text here..."></textarea>
-      <div class="transcript-edit-buttons">
-        <button class="success" onclick="applyTranscriptEdit()">✅ Apply Changes</button>
-        <button class="danger" onclick="cancelTranscriptEdit()">❌ Cancel</button>
-      </div>
-    </div>
     <div class="transcript-box" id="transcriptBox"></div>
   </div>
 
@@ -301,7 +347,7 @@ video, iframe.video-player{
     <ul>
       <li><b>Click any word</b> to make it a gap (turns yellow).</li>
       <li><b>Click a yellow word</b> to remove the gap.</li>
-      <li><b>"✏️ Edit Text"</b> button lets you fix transcription mistakes.</li>
+      <li><b>"✏️ Edit Text"</b> button — click directly in the transcript box to fix mistakes. Your gaps are preserved.</li>
     </ul>
 
     <h3>4. Click "Make it happen"</h3>
@@ -316,9 +362,10 @@ video, iframe.video-player{
     <h3>How students use it</h3>
     <ol>
       <li>The video plays the first sentence automatically.</li>
-      <li>They type the missing words.</li>
+      <li>They type the missing words — they can change their answers as many times as needed.</li>
       <li>They can replay each sentence as many times as they want.</li>
-      <li>Press Enter or click <b>Next</b> to advance.</li>
+      <li>When ready, they click <b>✅ Submit</b> — green ✓ for correct, red ✗ for wrong (with the correct answer shown).</li>
+      <li>The next sentence loads automatically after 6 seconds, or press <b>Next</b> to skip ahead immediately.</li>
       <li>At the end, they see their score.</li>
     </ol>
   </div>
@@ -594,7 +641,7 @@ function groupSentencesForStudent(rawSentences) {
     const wordCount = s.words.length;
     const hasGap = s.words.some(w => w.isGap);
 
-    // 👉 NEW RULE: short sentences (≤3 words) always merge forward
+    // Short sentences (≤3 words) always merge forward
     const isShort = wordCount <= 3;
 
     if (isShort) {
@@ -605,9 +652,7 @@ function groupSentencesForStudent(rawSentences) {
     if (!hasGap) {
       pending.push(s);
     } else {
-      // Merge pending + current
       const allWords = [];
-
       pending.forEach(p => p.words.forEach(w => allWords.push(w)));
       s.words.forEach(w => allWords.push(w));
 
@@ -628,7 +673,6 @@ function groupSentencesForStudent(rawSentences) {
         last.endTime = Math.max(last.endTime, p.endTime);
       });
     } else {
-      // fallback (no groups yet)
       pending.forEach(p => groups.push(p));
     }
   }
@@ -649,7 +693,6 @@ function buildSentencesFromTranscript(data) {
 
   const rawSentences = splitIntoSentences(text);
 
-  // Attach timestamps by aligning each token to the words array
   let wordIdx = 0;
   sentences = rawSentences.map(rawText => {
     const tokens = rawText.split(/\s+/).filter(Boolean);
@@ -687,7 +730,6 @@ function buildSentencesFromTranscript(data) {
     };
   });
 
-  // Add a small buffer to end times for natural pauses
   sentences.forEach((s, i) => {
     if (i < sentences.length - 1) {
       s.endTime = Math.max(s.endTime, sentences[i + 1].startTime - 0.1);
@@ -706,113 +748,131 @@ function buildSentencesFromTranscript(data) {
 }
 
 // ============================================================
-// ✏️ EDIT TEXT MODE
+// ✏️ INLINE EDIT TEXT MODE
+// Editing happens inside the transcript box itself.
+// Existing gaps are preserved via word-matching after apply.
 // ============================================================
 function toggleEditMode() {
   editModeActive = !editModeActive;
-  const container = document.getElementById("editModeContainer");
-  const textarea = document.getElementById("transcriptEditArea");
+  const btn = document.getElementById("editModeBtn");
 
   if (editModeActive) {
-    container.style.display = "block";
-    const fullText = sentences.map(s => s.originalText).join(" ");
-    textarea.value = fullText;
-    textarea.focus();
+    btn.innerText = "❌ Cancel Edit";
+    btn.className = "danger";
+    renderTranscriptEditMode();
   } else {
-    container.style.display = "none";
+    cancelTranscriptEdit();
   }
 }
 
+function renderTranscriptEditMode() {
+  const box = document.getElementById("transcriptBox");
+  box.classList.add("edit-mode");
+
+  // Apply/Cancel buttons at the top of the box
+  let html =
+    '<div class="transcript-edit-header">' +
+      '<button class="success" onclick="applyTranscriptEdit()">✅ Apply Changes</button>' +
+      '<button class="danger" onclick="cancelTranscriptEdit()">❌ Cancel</button>' +
+      '<span style="font-size:13px;color:#6b7280;align-self:center;">Edit each sentence directly. Your gaps will be preserved.</span>' +
+    '</div>';
+
+  // One textarea per sentence
+  sentences.forEach((s, si) => {
+    html +=
+      '<div class="sentence-edit-row">' +
+        '<textarea class="sentence-edit-textarea" data-sent="' + si + '" ' +
+          'oninput="autoResizeTextarea(this)">' +
+          escapeHtml(s.originalText) +
+        '</textarea>' +
+      '</div>';
+  });
+
+  box.innerHTML = html;
+
+  // Auto-size all textareas after render
+  setTimeout(() => {
+    box.querySelectorAll(".sentence-edit-textarea").forEach(ta => autoResizeTextarea(ta));
+  }, 0);
+}
+
+function autoResizeTextarea(ta) {
+  ta.style.height = "auto";
+  ta.style.height = (ta.scrollHeight + 2) + "px";
+}
+
 function applyTranscriptEdit() {
-  const newText = document.getElementById("transcriptEditArea").value.trim();
+  const box = document.getElementById("transcriptBox");
+  const textareas = box.querySelectorAll(".sentence-edit-textarea");
+  if (!textareas.length) return;
+
+  const newText = Array.from(textareas)
+    .map(ta => ta.value.trim())
+    .filter(Boolean)
+    .join(" ");
 
   if (!newText) {
     alert("Transcript cannot be empty.");
     return;
   }
 
-  // ============================================================
-  // Preserve existing gaps
-  // ============================================================
-
-  // Build a queue of existing gap words
-  // Example:
-  // { "weather": 2, "beautiful": 1 }
+  // Build a count of existing gap words so we can re-apply them
   const existingGapCounts = {};
-
   sentences.forEach(sentence => {
     sentence.words.forEach(word => {
       if (word.isGap) {
-        const clean = word.text
-          .toLowerCase()
-          .replace(/[^\w']/g, "");
-
+        const clean = word.text.toLowerCase().replace(/[^\w']/g, "");
         if (clean) {
-          existingGapCounts[clean] =
-            (existingGapCounts[clean] || 0) + 1;
+          existingGapCounts[clean] = (existingGapCounts[clean] || 0) + 1;
         }
       }
     });
   });
 
   const rawSentences = splitIntoSentences(newText);
-
-  // Keep old timing if possible
   const oldSentences = sentences;
 
   sentences = rawSentences.map((rawText, idx) => {
     const tokens = rawText.split(/\s+/).filter(Boolean);
 
     const sentenceWords = tokens.map(token => {
-
-      const clean = token
-        .toLowerCase()
-        .replace(/[^\w']/g, "");
-
+      const clean = token.toLowerCase().replace(/[^\w']/g, "");
       let shouldBeGap = false;
-
-      // Reapply gaps where possible
-      if (
-        clean &&
-        existingGapCounts[clean] &&
-        existingGapCounts[clean] > 0
-      ) {
+      if (clean && existingGapCounts[clean] && existingGapCounts[clean] > 0) {
         shouldBeGap = true;
         existingGapCounts[clean]--;
       }
-
-      return {
-        text: token,
-        time: 0,
-        isGap: shouldBeGap
-      };
+      return { text: token, time: 0, isGap: shouldBeGap };
     });
 
     const oldSent = oldSentences[idx];
-
     return {
       words: sentenceWords,
-      startTime: oldSent
-        ? oldSent.startTime
-        : (idx * 5),
-
-      endTime: oldSent
-        ? oldSent.endTime
-        : ((idx + 1) * 5),
-
+      startTime: oldSent ? oldSent.startTime : (idx * 5),
+      endTime: oldSent ? oldSent.endTime : ((idx + 1) * 5),
       originalText: rawText
     };
   });
 
   editModeActive = false;
+  const btn = document.getElementById("editModeBtn");
+  btn.innerText = "✏️ Edit Text";
+  btn.className = "secondary";
 
-  document.getElementById("editModeContainer").style.display = "none";
-
+  box.classList.remove("edit-mode");
   renderTranscript();
 }
+
 function cancelTranscriptEdit() {
   editModeActive = false;
-  document.getElementById("editModeContainer").style.display = "none";
+  const btn = document.getElementById("editModeBtn");
+  if (btn) {
+    btn.innerText = "✏️ Edit Text";
+    btn.className = "secondary";
+  }
+  const box = document.getElementById("transcriptBox");
+  if (box) box.classList.remove("edit-mode");
+  renderTranscript();
 }
 
 // ============================================================
@@ -834,6 +894,9 @@ function renderTranscript() {
 
 // Single delegated click handler — works on touch and desktop
 document.addEventListener("click", function (e) {
+  // Don't toggle gaps when in edit mode
+  if (editModeActive) return;
+
   const target = e.target;
   if (!target.classList || !target.classList.contains("transcript-word")) return;
 
@@ -849,7 +912,6 @@ document.addEventListener("click", function (e) {
   if (!clean) return;
 
   word.isGap = !word.isGap;
-  // Update only this word's class instead of full re-render (faster, no flicker)
   target.classList.toggle("gap");
 });
 
@@ -892,7 +954,6 @@ async function makeItHappen() {
 }
 
 function applyAISuggestedGaps(aiSections) {
-  // Collect target words from AI response
   const targets = [];
   aiSections.forEach(sec => {
     (sec.answers || []).forEach(a => {
@@ -901,7 +962,6 @@ function applyAISuggestedGaps(aiSections) {
     });
   });
 
-  // For each target, mark first matching non-gap occurrence as gap
   targets.forEach(target => {
     for (const sentence of sentences) {
       let found = false;
@@ -948,66 +1008,44 @@ function previewExercise() {
 }
 
 async function generateLink() {
-
   const lesson = buildLesson();
+  if (!lesson.videoUrl) { alert("Add a video first."); return; }
+  const hasGaps = lesson.sentences.some(s => s.words.some(w => w.isGap));
+  if (!hasGaps) { alert("No gaps yet. Click words or use 'Make it happen' first."); return; }
 
-  if (!lesson.videoUrl) {
-    alert("Add a video first.");
-    return;
-  }
+  // Compact format — uses short keys
+  const slim = {
+    videoUrl: lesson.videoUrl,
+    sentences: lesson.sentences.map(s => ({
+      words: s.words.map(w => w.isGap ? { t: w.text, g: 1 } : { t: w.text }),
+      s: Math.round(s.startTime * 100) / 100,
+      e: Math.round(s.endTime * 100) / 100
+    }))
+  };
 
-  const hasGaps = lesson.sentences.some(
-    s => s.words.some(w => w.isGap)
-  );
-
-  if (!hasGaps) {
-    alert("No gaps yet.");
-    return;
-  }
+  const linkBox = document.getElementById("link");
+  linkBox.className = "status";
+  linkBox.innerHTML = "⏳ Saving lesson…";
 
   try {
-
-    const res = await fetch(
-      WORKER + "/save-lesson",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(lesson)
-      }
-    );
-
-    if (!res.ok) {
-      throw new Error("Failed to save lesson");
-    }
-
+    const res = await fetch(WORKER + "/save-lesson", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(slim)
+    });
     const data = await res.json();
+    if (!res.ok || !data.id) throw new Error(data.error || "Save failed");
 
-    const link =
-      location.origin +
-      location.pathname +
-      "?lesson=" +
-      data.id;
-
-    const linkBox = document.getElementById("link");
-
+    const link = location.origin + location.pathname + "?id=" + data.id;
     linkBox.className = "status success";
-
     linkBox.innerHTML =
-      '<b>✅ Student Link:</b><br>' +
-      '<a href="' + link + '" target="_blank">' +
-      link +
-      '</a>' +
+      '<b>✅ Student Link:</b> <code style="font-size:1.1em;letter-spacing:1px;">' + data.id + '</code><br>' +
+      '<a href="' + link + '" target="_blank" style="word-break:break-all;">' + link + '</a>' +
       '<br><button class="primary-blue" style="margin-top:8px;" onclick="copyLink()">📋 Copy Link</button>';
-
     window._lastLink = link;
-
-  } catch (err) {
-
-    console.error(err);
-
-    alert("❌ " + err.message);
+  } catch (e) {
+    linkBox.className = "status error";
+    linkBox.innerHTML = "❌ Could not save lesson: " + e.message;
   }
 }
 
@@ -1026,7 +1064,9 @@ let studentState = {
   answers: {},
   results: {},
   finished: false,
-  isPreview: false
+  isPreview: false,
+  autoAdvanceTimer: null,
+  autoAdvanceCountInterval: null
 };
 
 function startStudent(rawLesson, previewMode) {
@@ -1036,7 +1076,6 @@ function startStudent(rawLesson, previewMode) {
     return;
   }
 
-  // Group sentences so any non-gap sentences are merged with the next gap-bearing one
   const groupedSentences = groupSentencesForStudent(lesson.sentences);
   const finalLesson = { videoUrl: lesson.videoUrl, sentences: groupedSentences };
 
@@ -1048,20 +1087,19 @@ function startStudent(rawLesson, previewMode) {
     answers: {},
     results: {},
     finished: false,
-    isPreview: previewMode || false
+    isPreview: previewMode || false,
+    autoAdvanceTimer: null,
+    autoAdvanceCountInterval: null
   };
 
   if (previewMode) {
-    // Hide the builder, show the student view in a separate container
     const app = document.getElementById("app");
     app.style.display = "none";
 
-    // Pause the builder video if playing
     if (builderPlayer && typeof builderPlayer.pause === "function") {
       try { builderPlayer.pause(); } catch (e) {}
     }
 
-    // Create or reuse student container
     let studentEl = document.getElementById("studentApp");
     if (!studentEl) {
       studentEl = document.createElement("div");
@@ -1078,7 +1116,6 @@ function startStudent(rawLesson, previewMode) {
       '<h1>🎧 Listening Exercise</h1>' +
       buildStudentMarkup(finalLesson);
   } else {
-    // Real student view — replace whole app
     document.getElementById("app").innerHTML =
       '<h1>🎧 Listening Exercise</h1>' + buildStudentMarkup(finalLesson);
   }
@@ -1097,12 +1134,13 @@ function buildStudentMarkup(lesson) {
     '<div class="card student-card" id="studentCard">' +
       '<div class="progress-dots" id="progressDots"></div>' +
       '<div class="sentence-display" id="sentenceDisplay"></div>' +
-    '<div style="text-align:center;margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' +
-      '<button class="secondary" onclick="previousSentence()" id="prevBtn">⬅ Previous</button>' +
-      '<button class="secondary" onclick="replayCurrent()">🔁 Replay</button>' +
-      '<button class="primary-blue" onclick="nextSentence()" id="nextBtn">Next ➡</button>' +
-    '</div>' +
-      '<div class="status" id="studentStatus" style="text-align:center;"></div>' +
+      '<div style="text-align:center;margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' +
+        '<button class="secondary" onclick="previousSentence()" id="prevBtn">⬅ Previous</button>' +
+        '<button class="secondary" onclick="replayCurrent()">🔁 Replay</button>' +
+        '<button class="success" onclick="submitCurrentSentence()" id="submitBtn">✅ Submit</button>' +
+        '<button class="primary-blue" onclick="nextSentence()" id="nextBtn">Next ➡</button>' +
+      '</div>' +
+      '<div class="status" id="studentStatus" style="text-align:center;margin-top:10px;"></div>' +
     '</div>';
 }
 
@@ -1110,17 +1148,16 @@ function buildStudentMarkup(lesson) {
 // ⬅ EXIT PREVIEW — stop student, restore builder
 // ============================================================
 function exitPreview() {
-  // Stop student video and clear polling timer
   if (studentState.videoEl) {
     try { studentState.videoEl.pause(); } catch (e) {}
   }
   clearInterval(studentState.stopTimer);
+  clearTimeout(studentState.autoAdvanceTimer);
+  clearInterval(studentState.autoAdvanceCountInterval);
 
-  // Hide student view
   const studentEl = document.getElementById("studentApp");
   if (studentEl) studentEl.style.display = "none";
 
-  // Show the builder again
   const app = document.getElementById("app");
   app.style.display = "block";
 }
@@ -1161,18 +1198,25 @@ function renderProgressDots() {
 }
 
 function loadSentence(idx) {
+  // Cancel any pending auto-advance
+  clearTimeout(studentState.autoAdvanceTimer);
+  clearInterval(studentState.autoAdvanceCountInterval);
+  studentState.autoAdvanceTimer = null;
+  studentState.autoAdvanceCountInterval = null;
+
+  // Reset submit button for each new sentence
+  const submitBtn = document.getElementById("submitBtn");
+  if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = "✅ Submit"; }
+
   const lesson = studentState.lesson;
-  if (idx >= lesson.sentences.length) { 
-    showFinalScore(); 
-    return; 
-  }
+  if (idx >= lesson.sentences.length) { showFinalScore(); return; }
 
   studentState.currentIdx = idx;
   renderProgressDots();
-const prevBtn = document.getElementById("prevBtn");
-if (prevBtn) {
-  prevBtn.disabled = idx === 0;
-}
+
+  const prevBtn = document.getElementById("prevBtn");
+  if (prevBtn) prevBtn.disabled = idx === 0;
+
   const sentence = lesson.sentences[idx];
   const display = document.getElementById("sentenceDisplay");
 
@@ -1190,10 +1234,9 @@ if (prevBtn) {
     }
 
     return '<span>' + escapeHtml(w.text) + '</span>';
-  }).join(""); // 👈 important: no spaces here
+  }).join("");
 
   display.innerHTML = html;
-
   document.getElementById("studentStatus").innerText = "";
 
   playCurrentSentence();
@@ -1213,7 +1256,6 @@ function playCurrentSentence() {
 
   v.currentTime = sentence.startTime;
 
-  // Remove previous listener
   if (sentenceStopHandler) {
     v.removeEventListener("timeupdate", sentenceStopHandler);
   }
@@ -1233,13 +1275,88 @@ function playCurrentSentence() {
 function replayCurrent() {
   playCurrentSentence();
 }
-function previousSentence() {
-  if (studentState.currentIdx <= 0) return;
 
+function previousSentence() {
+  clearTimeout(studentState.autoAdvanceTimer);
+  clearInterval(studentState.autoAdvanceCountInterval);
+  studentState.autoAdvanceTimer = null;
+  studentState.autoAdvanceCountInterval = null;
+  if (studentState.currentIdx <= 0) return;
   loadSentence(studentState.currentIdx - 1);
 }
+
 function trackAnswer(sentIdx, wordIdx, value) {
   studentState.answers[sentIdx + "_" + wordIdx] = value;
+  // No auto-check — student submits when ready
+}
+
+// ============================================================
+// ✅ SUBMIT SENTENCE
+// Called when the student clicks the Submit button.
+// Shows green ✓ / red ✗ feedback, then auto-advances after 6 s.
+// ============================================================
+function submitCurrentSentence() {
+  const sentIdx = studentState.currentIdx;
+  if (studentState.autoAdvanceTimer) return; // already submitted
+
+  // Disable the submit button so it can't be clicked twice
+  const submitBtn = document.getElementById("submitBtn");
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.innerText = "✅ Submitted"; }
+
+  // Show feedback
+  showAnswerFeedback(sentIdx);
+
+  // 6-second countdown then auto-advance
+  let countdown = 6;
+  const statusEl = document.getElementById("studentStatus");
+  if (statusEl) statusEl.innerText = "⏭ Next sentence in " + countdown + "s…";
+
+  studentState.autoAdvanceCountInterval = setInterval(() => {
+    countdown--;
+    if (statusEl && countdown > 0) {
+      statusEl.innerText = "⏭ Next sentence in " + countdown + "s…";
+    }
+  }, 1000);
+
+  studentState.autoAdvanceTimer = setTimeout(() => {
+    clearInterval(studentState.autoAdvanceCountInterval);
+    studentState.autoAdvanceTimer = null;
+    studentState.autoAdvanceCountInterval = null;
+    loadSentence(studentState.currentIdx + 1);
+  }, 6000);
+}
+
+function showAnswerFeedback(sentIdx) {
+  const sentence = studentState.lesson.sentences[sentIdx];
+
+  sentence.words.forEach((w, wi) => {
+    if (!w.isGap) return;
+
+    const input = document.getElementById("ans_" + sentIdx + "_" + wi);
+    if (!input) return;
+
+    const userVal = input.value.trim();
+    const correct = w.text.toLowerCase().replace(/[^\w']/g, "");
+    const userClean = userVal.toLowerCase().replace(/[^\w']/g, "");
+    const isCorrect = userClean === correct;
+
+    studentState.results[sentIdx + "_" + wi] = isCorrect;
+
+    // Replace the input with a visual feedback element
+    const wrapper = input.parentElement; // the <span> wrapping the input
+    if (!wrapper) return;
+
+    if (isCorrect) {
+      wrapper.innerHTML =
+        '<span class="feedback-correct">✓ ' + escapeHtml(w.text) + '</span>';
+    } else {
+      wrapper.innerHTML =
+        '<span class="feedback-incorrect">' +
+          '<span class="feedback-correct-ans">✓ ' + escapeHtml(w.text) + '</span>' +
+          '<span class="feedback-wrong-ans">✗ ' + escapeHtml(userVal || "(blank)") + '</span>' +
+        '</span>';
+    }
+  });
 }
 
 function handleGapKey(e) {
@@ -1270,6 +1387,7 @@ function checkCurrentSentence() {
       const isCorrect = userClean === correct;
       studentState.results[idx + "_" + wi] = isCorrect;
 
+      // Only colour inputs that are still in the DOM (not replaced by feedback spans)
       const input = document.getElementById("ans_" + idx + "_" + wi);
       if (input) {
         input.classList.remove("correct", "incorrect");
@@ -1283,10 +1401,16 @@ function checkCurrentSentence() {
 }
 
 function nextSentence() {
+  // Cancel any pending auto-advance
+  clearTimeout(studentState.autoAdvanceTimer);
+  clearInterval(studentState.autoAdvanceCountInterval);
+  studentState.autoAdvanceTimer = null;
+  studentState.autoAdvanceCountInterval = null;
+
   checkCurrentSentence();
   setTimeout(() => {
     loadSentence(studentState.currentIdx + 1);
-  }, 600);
+  }, 400);
 }
 
 function showFinalScore() {
@@ -1348,62 +1472,36 @@ function showAnswers() {
 // 🔁 Routing — student vs builder
 // Must run AFTER all functions (startStudent, normalizeLesson, etc.) are defined.
 // ============================================================
-(async function () {
+(function () {
+  (async () => {
+    const params = new URLSearchParams(location.search);
+    const shortId = params.get("id");
+    const rawData = params.get("data");
 
-  const params = new URLSearchParams(location.search);
-
-  // ============================================
-  // NEW: Saved lessons
-  // ============================================
-
-  const lessonId = params.get("lesson");
-
-  if (lessonId) {
-
-    try {
-
-      const res = await fetch(
-        WORKER + "/lesson/" + lessonId
-      );
-
-      if (!res.ok) {
-        throw new Error("Lesson not found");
+    if (shortId) {
+      // New format: short ID stored in Cloudflare KV
+      document.getElementById("app").innerHTML =
+        '<div class="card"><p>⏳ Loading lesson…</p></div>';
+      try {
+        const res = await fetch(WORKER + "/load-lesson?id=" + encodeURIComponent(shortId));
+        if (!res.ok) throw new Error("Lesson not found (ID: " + shortId + ")");
+        const lesson = await res.json();
+        startStudent(lesson);
+      } catch (e) {
+        document.getElementById("app").innerHTML =
+          '<div class="card"><h2>⚠️ ' + e.message + '</h2></div>';
       }
-
-      const lesson = await res.json();
-
-      startStudent(lesson);
-
-      return;
-
-    } catch (e) {
-
-      document.getElementById("app").innerHTML =
-        '<div class="card"><h2>⚠️ Lesson not found.</h2></div>';
-
-      return;
+    } else if (rawData) {
+      // Legacy format: compressed JSON in URL
+      try {
+        const json = LZString.decompressFromEncodedURIComponent(rawData) || rawData;
+        startStudent(JSON.parse(json));
+      } catch (e) {
+        document.getElementById("app").innerHTML =
+          '<div class="card"><h2>⚠️ Invalid lesson link.</h2></div>';
+      }
     }
-  }
-
-  // ============================================
-  // OLD inline links still supported
-  // ============================================
-
-  const rawData = params.get("data");
-
-  if (rawData) {
-
-    try {
-
-      startStudent(JSON.parse(rawData));
-
-    } catch (e) {
-
-      document.getElementById("app").innerHTML =
-        '<div class="card"><h2>⚠️ Invalid lesson link.</h2></div>';
-    }
-  }
-
+  })();
 })();
 </script>
 
