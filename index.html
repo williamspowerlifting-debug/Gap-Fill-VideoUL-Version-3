@@ -636,46 +636,89 @@ function groupSentencesForStudent(rawSentences) {
   const groups = [];
   let pending = [];
 
+  const SHORT_SENTENCE_WORDS = 3;
+  const LONG_SENTENCE_WORDS = 8;
+
+  function flushPending() {
+    if (!pending.length) return;
+
+    const allWords = [];
+    pending.forEach(p => p.words.forEach(w => allWords.push(w)));
+
+    groups.push({
+      words: allWords,
+      startTime: pending[0].startTime,
+      endTime: pending[pending.length - 1].endTime
+    });
+
+    pending = [];
+  }
+
   for (let i = 0; i < rawSentences.length; i++) {
     const s = rawSentences[i];
     const wordCount = s.words.length;
     const hasGap = s.words.some(w => w.isGap);
 
-    // Short sentences (≤3 words) always merge forward
-    const isShort = wordCount <= 3;
+    const isShort = wordCount <= SHORT_SENTENCE_WORDS;
+    const isLong = wordCount >= LONG_SENTENCE_WORDS;
 
+    // ------------------------------------------------
+    // SHORT SENTENCES
+    // Keep grouping short conversational fragments
+    // together naturally
+    // ------------------------------------------------
     if (isShort) {
       pending.push(s);
       continue;
     }
 
-    if (!hasGap) {
-      pending.push(s);
-    } else {
+    // ------------------------------------------------
+    // LONG SENTENCES
+    // If we already have short pending sentences,
+    // keep them as their own chunk instead of
+    // attaching them to the long sentence
+    // ------------------------------------------------
+    if (isLong) {
+      flushPending();
+
+      groups.push({
+        words: [...s.words],
+        startTime: s.startTime,
+        endTime: s.endTime
+      });
+
+      continue;
+    }
+
+    // ------------------------------------------------
+    // MEDIUM SENTENCES
+    // Attach pending short fragments to medium-length
+    // sentences for natural flow
+    // ------------------------------------------------
+    if (pending.length > 0) {
       const allWords = [];
+
       pending.forEach(p => p.words.forEach(w => allWords.push(w)));
       s.words.forEach(w => allWords.push(w));
 
-      const startTime = pending.length > 0 ? pending[0].startTime : s.startTime;
-      const endTime = s.endTime;
-
-      groups.push({ words: allWords, startTime, endTime });
-      pending = [];
-    }
-  }
-
-  // Handle leftovers
-  if (pending.length > 0) {
-    if (groups.length > 0) {
-      const last = groups[groups.length - 1];
-      pending.forEach(p => {
-        p.words.forEach(w => last.words.push(w));
-        last.endTime = Math.max(last.endTime, p.endTime);
+      groups.push({
+        words: allWords,
+        startTime: pending[0].startTime,
+        endTime: s.endTime
       });
+
+      pending = [];
     } else {
-      pending.forEach(p => groups.push(p));
+      groups.push({
+        words: [...s.words],
+        startTime: s.startTime,
+        endTime: s.endTime
+      });
     }
   }
+
+  // leftover short sentences at the end
+  flushPending();
 
   return groups;
 }
