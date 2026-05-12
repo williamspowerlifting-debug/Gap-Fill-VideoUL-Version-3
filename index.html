@@ -1086,6 +1086,7 @@ function startStudent(rawLesson, previewMode) {
     stopTimer: null,
     answers: {},
     results: {},
+    submittedSentences: {}
     finished: false,
     isPreview: previewMode || false,
     autoAdvanceTimer: null,
@@ -1206,7 +1207,8 @@ function loadSentence(idx) {
 
   // Reset submit button for each new sentence
   const submitBtn = document.getElementById("submitBtn");
-  const sentenceAlreadySubmitted = sentenceHasBeenSubmitted(idx);
+  const sentenceAlreadySubmitted =
+  !!studentState.submittedSentences[idx];
 
 if (submitBtn) {
   submitBtn.disabled = sentenceAlreadySubmitted;
@@ -1335,6 +1337,7 @@ function trackAnswer(sentIdx, wordIdx, value) {
 // ============================================================
 function submitCurrentSentence() {
   const sentIdx = studentState.currentIdx;
+  studentState.submittedSentences[sentIdx] = true;
   if (studentState.autoAdvanceTimer) return; // already submitted
 
   // Disable the submit button so it can't be clicked twice
