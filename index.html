@@ -1207,7 +1207,7 @@ function startStudent(rawLesson, previewMode) {
 
 function buildStudentMarkup(lesson) {
   return '<div class="card">' +
-      '<video id="studentVideo" class="video-player" controls crossorigin="anonymous">' +
+      '<video id="studentVideo" class="video-player" controls crossorigin="anonymous" muted playsinline>' +
         '<source src="' + escapeAttr(lesson.videoUrl) + '">' +
       '</video>' +
     '</div>' +
@@ -1388,7 +1388,12 @@ function playCurrentSentence() {
   };
 
   v.addEventListener("timeupdate", sentenceStopHandler);
-  v.play();
+  const playPromise = v.play();
+
+if (playPromise !== undefined) {
+  playPromise.catch(err => {
+    console.log("Autoplay prevented:", err);
+  });
 }
 
 function replayCurrent() {
