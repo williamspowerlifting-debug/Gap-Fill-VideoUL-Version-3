@@ -1206,7 +1206,14 @@ function loadSentence(idx) {
 
   // Reset submit button for each new sentence
   const submitBtn = document.getElementById("submitBtn");
-  if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = "✅ Submit"; }
+  const sentenceAlreadySubmitted = sentenceHasBeenSubmitted(idx);
+
+if (submitBtn) {
+  submitBtn.disabled = sentenceAlreadySubmitted;
+  submitBtn.innerText = sentenceAlreadySubmitted
+    ? "✅ Submitted"
+    : "✅ Submit";
+}
 
   const lesson = studentState.lesson;
   if (idx >= lesson.sentences.length) { showFinalScore(); return; }
@@ -1221,17 +1228,48 @@ function loadSentence(idx) {
   const display = document.getElementById("sentenceDisplay");
 
   const html = sentence.words.map((w, wi) => {
-    if (w.isGap) {
-      const id = "ans_" + idx + "_" + wi;
-      const saved = studentState.answers[idx + "_" + wi] || "";
+   if (w.isGap) {
 
+  const key = idx + "_" + wi;
+  const id = "ans_" + idx + "_" + wi;
+
+  const saved = studentState.answers[key] || "";
+  const alreadyChecked = key in studentState.results;
+
+  // If already submitted before, preserve feedback view
+  if (alreadyChecked) {
+
+    const isCorrect = studentState.results[key];
+
+    if (isCorrect) {
       return '<span>' +
-        '<input type="text" class="gap-input" id="' + id + '" value="' + escapeAttr(saved) + '"' +
-        ' data-correct="' + escapeAttr(w.text) + '"' +
-        ' oninput="trackAnswer(' + idx + ',' + wi + ',this.value)"' +
-        ' onkeydown="handleGapKey(event)">' +
+        '<span class="feedback-correct">✓ ' +
+        escapeHtml(w.text) +
+        '</span>' +
       '</span>';
     }
+
+    return '<span>' +
+      '<span class="feedback-incorrect">' +
+        '<span class="feedback-correct-ans">✓ ' +
+          escapeHtml(w.text) +
+        '</span>' +
+
+        '<span class="feedback-wrong-ans">✗ ' +
+          escapeHtml(saved || "(blank)") +
+        '</span>' +
+      '</span>' +
+    '</span>';
+  }
+
+  // Otherwise render editable input normally
+  return '<span>' +
+    '<input type="text" class="gap-input" id="' + id + '" value="' + escapeAttr(saved) + '"' +
+    ' data-correct="' + escapeAttr(w.text) + '"' +
+    ' oninput="trackAnswer(' + idx + ',' + wi + ',this.value)"' +
+    ' onkeydown="handleGapKey(event)">' +
+  '</span>';
+}
 
     return '<span>' + escapeHtml(w.text) + '</span>';
   }).join("");
@@ -1325,7 +1363,16 @@ function submitCurrentSentence() {
     loadSentence(studentState.currentIdx + 1);
   }, 6000);
 }
+  
+function sentenceHasBeenSubmitted(sentIdx) {
+  const sentence = studentState.lesson.sentences[sentIdx];
 
+  return sentence.words.some((w, wi) => {
+    if (!w.isGap) return false;
+    return (sentIdx + "_" + wi) in studentState.results;
+  });
+}
+  
 function showAnswerFeedback(sentIdx) {
   const sentence = studentState.lesson.sentences[sentIdx];
 
