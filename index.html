@@ -860,13 +860,7 @@ function renderTranscriptEditMode() {
   const box = document.getElementById("transcriptBox");
   box.classList.add("edit-mode");
 
-    // Apply/Cancel buttons at the top of the box
-  let html =
-    '<div class="transcript-edit-header">' +
-      '<button class="success" onclick="applyTranscriptEdit()">✅ Apply Changes</button>' +
-      '<button class="danger" onclick="cancelTranscriptEdit()">❌ Cancel</button>' +
-      '<span style="font-size:13px;color:#6b7280;align-self:center;">Edit each sentence directly. Your gaps will be preserved.</span>' +
-    '</div>';
+  let html = "";
 
   // One textarea per sentence
   sentences.forEach((s, si) => {
@@ -878,6 +872,14 @@ function renderTranscriptEditMode() {
         '</textarea>' +
       '</div>';
   });
+
+  // Buttons moved to bottom
+  html +=
+    '<div class="transcript-edit-header" style="margin-top:18px;border-top:1px solid #e5e7eb;padding-top:14px;border-bottom:none;">' +
+      '<button class="success" onclick="applyTranscriptEdit()">✅ Apply Changes</button>' +
+      '<button class="danger" onclick="cancelTranscriptEdit()">❌ Cancel</button>' +
+      '<span style="font-size:13px;color:#6b7280;align-self:center;">Edit each sentence directly. Your gaps will be preserved.</span>' +
+    '</div>';
 
   box.innerHTML = html;
 
@@ -1403,9 +1405,16 @@ function playCurrentSentence() {
   const playPromise = v.play();
 
 if (playPromise !== undefined) {
-  playPromise.catch(err => {
-    console.log("Autoplay prevented:", err);
-  });
+  playPromise
+    .then(() => {
+      // unmute after autoplay starts
+      setTimeout(() => {
+        v.muted = false;
+      }, 200);
+    })
+    .catch(err => {
+      console.log("Autoplay prevented:", err);
+    });
 }
 }
 function replayCurrent() {
