@@ -293,31 +293,43 @@ video, iframe.video-player{
     <div class="status" id="transcribeStatus"></div>
   </div>
 
-  <!-- Step 3: Transcript Editor -->
-  <div class="card" id="step3Card" style="display:none;">
-    <h2>3. Transcript</h2>
-    <div class="transcript-help">
-      💡 <b>Tap or click any word</b> to mark it as a gap. Tap a yellow word to remove the gap.
-    </div>
-    <button class="secondary" onclick="toggleEditMode()" id="editModeBtn" style="margin-bottom:12px;">✏️ Edit Text</button>
-    <div class="transcript-box" id="transcriptBox"></div>
+  <!-- Step 3: Generate Gaps -->
+<div class="card" id="step3Card" style="display:none;">
+  <h2>3. Generate Gaps</h2>
+
+  <div class="level-row">
+    <label for="levelSelect">Student level:</label>
+    <select id="levelSelect">
+      <option value="A1">A1 — Beginner</option>
+      <option value="A2">A2 — Elementary</option>
+      <option value="B1" selected>B1 — Intermediate</option>
+      <option value="B2">B2 — Upper Intermediate</option>
+      <option value="C1">C1 — Advanced</option>
+    </select>
   </div>
 
-  <!-- Step 4: Make it happen -->
-  <div class="card" id="step4Card" style="display:none;">
-    <h2>4. Choose level</h2>
-    <div class="level-row">
-      <label for="levelSelect">Student level:</label>
-      <select id="levelSelect">
-        <option value="A1">A1 — Beginner</option>
-        <option value="A2">A2 — Elementary</option>
-        <option value="B1" selected>B1 — Intermediate</option>
-        <option value="B2">B2 — Upper Intermediate</option>
-        <option value="C1">C1 — Advanced</option>
-      </select>
-    </div>
-    <button class="success big full" onclick="makeItHappen()" id="makeBtn">✨ Make it happen</button>
+  <button class="success big full" onclick="makeItHappen()" id="makeBtn">
+    ✨ Generate Gaps
+  </button>
+</div>
+
+  <!-- Step 4: Edit Text -->
+<div class="card" id="step4Card" style="display:none;">
+  <h2>4. Edit Text</h2>
+
+  <div class="transcript-help">
+    💡 <b>Tap or click any word</b> to mark it as a gap. Tap a yellow word to remove the gap.
   </div>
+
+  <button class="secondary"
+          onclick="toggleEditMode()"
+          id="editModeBtn"
+          style="margin-bottom:12px;">
+    ✏️ Edit Text
+  </button>
+
+  <div class="transcript-box" id="transcriptBox"></div>
+</div>
 
   <!-- Step 5: Final Actions -->
   <div class="card" id="step5Card" style="display:none;">
